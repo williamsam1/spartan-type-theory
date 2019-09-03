@@ -15,9 +15,25 @@ type expr =
   | Prod of (Name.ident * ty) * ty (** dependent product *)
   | Lambda of (Name.ident * ty) * expr (** lambda abstraction *)
   | Apply of expr * expr (** application *)
+  | Empty (** empty type *)
+  | Nat (** natural numbers type *)
+  | Zero (** first natual number *)
+  | Suc (** successor function *)
+  | NatRec (** natural number recursion *)
 
 (** Type *)
 and ty = Ty of expr
+
+(** int as a bound expression *)
+let index_expr i = Bound (i : index)
+
+(** converts a spine as a list into an expresion *)
+let rec spine_expr e1 e2 es = 
+  match es with
+  | [] -> Apply (e1, e2)
+  | (e3 :: es) -> 
+    let e1 = Apply (e1, e2) in
+    spine_expr e1 e3 es
 
 (** {2 Support for bound variables and atoms.} *)
 
@@ -31,6 +47,20 @@ let new_atom : Name.ident -> atom =
 (** [Type] as a type. *)
 let ty_Type = Ty Type
 
+(** [Nat] as a type. *)
+let ty_Nat = Ty Nat
+
+(** function type [a -> b] *)
+let ty_Fun a b = Ty (Prod ((Name.anonymous (), a), b))
+
+let rec ty_Prod x e1 es b = 
+  match es with
+  | [] ->
+    Ty (Prod ((x, e1), b))
+  | (y, e2) :: es ->
+    let p = ty_Prod y e2 es b in
+    Ty (Prod ((x, e1), p))
+
 (** [instantiate ~lvl:k e e'] instantiates deBruijn index [k] with [e] in expression [e']. *)
 let rec instantiate ?(lvl=0) e e' =
   match e' with
@@ -41,6 +71,16 @@ let rec instantiate ?(lvl=0) e e' =
   | Atom _ -> e'
 
   | Type -> e'
+
+  | Empty -> e'
+
+  | Nat -> e'
+
+  | Zero -> e'
+
+  | Suc -> e'
+
+  | NatRec -> e'
 
   | Prod ((x, t), u) ->
      let t = instantiate_ty ~lvl e t
@@ -73,6 +113,16 @@ let rec abstract ?(lvl=0) x e =
 
   | Type -> e
 
+  | Empty -> e
+
+  | Nat -> e
+
+  | Zero -> e
+
+  | Suc -> e
+
+  | NatRec -> e
+
   | Prod ((y, t), u) ->
      let t = abstract_ty ~lvl x t
      and u = abstract_ty ~lvl:(lvl+1) x u in
@@ -104,6 +154,11 @@ let rec occurs k = function
   | Bound j -> j = k
   | Atom _ -> false
   | Type -> false
+  | Empty -> false
+  | Nat -> false
+  | Zero -> false
+  | Suc -> false
+  | NatRec -> false
   | Prod ((_, t), u) -> occurs_ty k t || occurs_ty (k+1) u
   | Lambda ((_, t), e) -> occurs_ty k t || occurs (k+1) e
   | Apply (e1, e2) -> occurs k e1 || occurs k e2
@@ -143,6 +198,21 @@ and print_expr' ~penv ?max_level e ppf =
     match e with
       | Type ->
         Format.fprintf ppf "Type"
+
+      | Empty ->
+        Format.fprintf ppf "Empty"
+
+      | Nat ->
+        Format.fprintf ppf "N"
+
+      | Zero ->
+        Format.fprintf ppf "Zero"
+
+      | Suc ->
+        Format.fprintf ppf "Suc"
+
+      | NatRec ->
+        Format.fprintf ppf "NatRec"
 
       | Atom x ->
         print_atom x ppf

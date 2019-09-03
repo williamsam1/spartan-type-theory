@@ -49,6 +49,28 @@ let rec infer ctx {Location.data=e'; loc} =
   | Syntax.Type ->
      TT.Type, TT.ty_Type
 
+  | Syntax.Empty ->
+     TT.Empty, TT.ty_Type
+
+  | Syntax.Nat ->
+     TT.Nat, TT.ty_Type
+
+  | Syntax.Zero ->
+     TT.Zero, TT.ty_Nat
+
+  | Syntax.Suc ->
+     TT.Suc, TT.ty_Fun TT.ty_Nat TT.ty_Nat
+
+  | Syntax.NatRec ->
+     let var_A = Name.Ident ("A", Name.Word) in
+     let ty_A = TT.Ty (TT.index_expr 0) in
+     let ty_A2 = TT.Ty (TT.index_expr 1) in
+     let ty_A3 = TT.Ty (TT.index_expr 2) in
+     let ty_A4 = TT.Ty (TT.index_expr 3) in
+     let var_a = Name.Ident ("a", Name.Word) in
+     let var_f = Name.Ident ("f", Name.Word) in
+     TT.NatRec, TT.ty_Prod var_A TT.ty_Type [(var_a, ty_A) ; (var_f, TT.ty_Fun ty_A2 ty_A3)] (TT.ty_Fun TT.ty_Nat ty_A4)
+
   | Syntax.Prod ((x, t), u) ->
      let t = check_ty ctx t in
      let x' = TT.new_atom x in
@@ -108,6 +130,11 @@ and check ctx ({Location.data=e'; loc} as e) ty =
   | Syntax.Prod _
   | Syntax.Var _
   | Syntax.Type
+  | Syntax.Empty
+  | Syntax.Nat
+  | Syntax.Zero
+  | Syntax.Suc
+  | Syntax.NatRec
   | Syntax.Ascribe _ ->
      let e, ty' = infer ctx e in
      if Equal.ty ctx ty ty'

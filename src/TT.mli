@@ -14,12 +14,32 @@ type expr =
   | Prod of (Name.ident * ty) * ty (** dependent product *)
   | Lambda of (Name.ident * ty) * expr (** lambda abstraction *)
   | Apply of expr * expr (** application *)
+  | Empty (** empty type *)
+  | Nat (** natural number type *)
+  | Zero (** first natural number *)
+  | Suc (** successor function *)
+  | NatRec (** natural number recursion *)
 
 (** Type *)
 and ty = Ty of expr
 
+(** int as a bound expression *)
+val index_expr : int -> expr
+
+(** converts a spine as a list into an expression *)
+val spine_expr : expr -> expr -> expr list -> expr
+
 (** [Type] as a type. *)
 val ty_Type : ty
+
+(** [Nat] as a type. *)
+val ty_Nat : ty
+
+(** function type [a -> b] *)
+val ty_Fun : ty -> ty -> ty
+
+(** nested product type (x1 : A1) (x2 : A2) ... (xn : An) b *)
+val ty_Prod : Name.ident -> ty -> (Name.ident * ty) list -> ty -> ty
 
 (** The name of an atom *)
 val atom_name : atom -> Name.ident

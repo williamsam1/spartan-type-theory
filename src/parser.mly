@@ -15,6 +15,11 @@
 
 (* Expressions *)
 %token TYPE
+%token EMPTY
+%token NAT
+%token ZERO
+%token SUC
+%token NATREC
 %token PROD
 %token LAMBDA
 
@@ -100,6 +105,11 @@ plain_prefix_term:
 plain_simple_term:
   | LPAREN e=plain_term RPAREN         { e }
   | TYPE                               { Input.Type }
+  | EMPTY                              { Input.Empty }
+  | NAT                                { Input.Nat }
+  | ZERO                               { Input.Zero }
+  | SUC                                { Input.Suc }
+  | NATREC                             { Input.NatRec }
   | x=var_name                         { Input.Var x }
 
 var_name:

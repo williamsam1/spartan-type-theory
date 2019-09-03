@@ -13,7 +13,12 @@ let reserved = [
   ("∀", Parser.PROD) ;
   ("Π", Parser.PROD) ;
   ("∏", Parser.PROD) ;
-  ("Type", Parser.TYPE)
+  ("Type", Parser.TYPE) ;
+  ("Empty", Parser.EMPTY) ;
+  ("Nat", Parser.NAT) ;
+  ("Zero", Parser.ZERO) ;
+  ("Suc", Parser.SUC) ;
+  ("NatRec", Parser.NATREC) 
 ]
 
 let name =

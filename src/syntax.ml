@@ -12,6 +12,11 @@ and expr' =
   | Lambda of (Name.ident * ty option) * expr
   | Apply of expr * expr
   | Ascribe of expr * ty
+  | Empty
+  | Nat
+  | Zero
+  | Suc
+  | NatRec
 
 (** Types (equal to expressions at this point). *)
 and ty = expr
@@ -35,6 +40,16 @@ and shift' n k = function
   | Var j -> if j >= n then Var (j + k) else Var j
 
   | Type -> Type
+
+  | Empty -> Empty
+
+  | Nat -> Nat
+ 
+  | Zero -> Zero
+
+  | Suc -> Suc
+
+  | NatRec -> NatRec
 
   | Prod ((x, t), u) ->
      let t = shift_ty n k t

@@ -5,6 +5,11 @@ type expr = expr' Location.located
 and expr' =
   | Var of Name.ident
   | Type
+  | Empty
+  | Nat
+  | Zero
+  | Suc
+  | NatRec
   | Prod of (Name.ident list * ty) list * ty
   | Lambda of (Name.ident list * ty option) list * ty
   | Apply of expr * expr

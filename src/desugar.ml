@@ -44,7 +44,6 @@ let index x ctx =
 (** Desugar an expression *)
 let rec expr ctx {Location.data=e; Location.loc=loc} =
   match e with
-
     | Input.Var x ->
        begin match index x ctx with
        | None -> error ~loc (UnknownIdentifier x)
@@ -52,6 +51,16 @@ let rec expr ctx {Location.data=e; Location.loc=loc} =
        end
 
     | Input.Type -> Location.locate ~loc Syntax.Type
+
+    | Input.Empty -> Location.locate ~loc Syntax.Empty
+
+    | Input.Nat -> Location.locate ~loc Syntax.Nat
+
+    | Input.Zero -> Location.locate ~loc Syntax.Zero
+
+    | Input.Suc -> Location.locate ~loc Syntax.Suc
+
+    | Input.NatRec -> Location.locate ~loc Syntax.NatRec
 
     | Input.Prod (a, u) ->
        let ctx, xts = prod_abstraction ctx a in

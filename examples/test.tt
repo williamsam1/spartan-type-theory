@@ -1,0 +1,6 @@
+Definition (+) := NatRec (Nat -> Nat) (fun (n : Nat) => n) (fun (f : Nat -> Nat) (n : Nat) => Suc (f n)).
+
+Definition one := Suc Zero.
+Definition two := one + one.
+
+Eval two.

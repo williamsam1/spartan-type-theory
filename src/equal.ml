@@ -12,6 +12,16 @@ let rec norm_expr ~strategy ctx e =
 
   | TT.Type -> e
 
+  | TT.Nat -> e
+
+  | TT.Zero -> e
+
+  | TT.Suc -> e
+
+  | TT.NatRec -> e
+
+  | TT.Empty -> e
+
   | TT.Atom x ->
     begin
       match Context.lookup_def x ctx with
@@ -37,8 +47,19 @@ let rec norm_expr ~strategy ctx e =
       | TT.Lambda (_, e') ->
         let e' = TT.instantiate e2 e' in
         norm_expr ~strategy ctx e'
+      | TT.Apply (TT.Apply (TT.Apply (TT.NatRec, _), a), f) ->
+        norm_nat_rec ~strategy ctx a f e2
       | _ -> TT.Apply (e1, e2)
     end
+
+(** normalize a natural number recursion *)
+and norm_nat_rec ~strategy ctx a f n =
+  match n with
+  | TT.Zero -> norm_expr ~strategy ctx a
+  | TT.Apply (TT.Suc, n) ->
+    let b = norm_nat_rec ~strategy ctx a f n in
+    norm_expr ~strategy ctx (TT.Apply (f, b))
+  | _ -> assert false
 
 (** Normalize a type *)
 let norm_ty ~strategy ctx (TT.Ty ty) =
@@ -71,6 +92,11 @@ let rec expr ctx e1 e2 ty =
       expr ctx e1 e2 u
 
     | TT.Type
+    | TT.Empty
+    | TT.Nat
+    | TT.Zero
+    | TT.Suc
+    | TT.NatRec
     | TT.Apply _
     | TT.Bound _
     | TT.Atom _ ->
@@ -89,6 +115,16 @@ and expr_whnf ctx e1 e2 =
   match e1, e2 with
 
   | TT.Type, TT.Type -> true
+
+  | TT.Empty, TT.Empty -> true
+
+  | TT.Nat, TT.Nat -> true
+
+  | TT.Zero, TT.Zero -> true
+
+  | TT.Suc, TT.Suc -> true
+
+  | TT.NatRec, TT.NatRec -> true
 
   | TT.Bound k1, TT.Bound k2 ->
     (* We should never be in a situation where we compare bound variables,
@@ -128,7 +164,7 @@ and expr_whnf ctx e1 e2 =
     end
 
 
-  | (TT.Type | TT.Bound _ | TT.Atom _ | TT.Prod _ | TT.Lambda _ | TT.Apply _), _ ->
+  | (TT.Type | TT.Empty | TT.Nat | TT.Zero | TT.Suc | TT.NatRec | TT.Bound _ | TT.Atom _ | TT.Prod _ | TT.Lambda _ | TT.Apply _), _ ->
     false
 
 (** Compare two types. *)
