@@ -1,0 +1,27 @@
+Axiom Empty : Type.
+
+Definition Not := fun (A : Type) => A -> Empty.
+
+Definition P := fun (A : Type) => A -> Type.
+
+Definition U := forall (X : Type), (P (P X) -> X) -> P (P X).
+
+Definition tau := fun (t : P (P U)) (X : Type) (f : P (P X) -> X) (p : X -> Type) =>
+	   t (fun (u : U) => p (f (u X f))).
+
+Definition sigma := fun (u : U) => u U tau.
+
+Definition delta := fun (u : U) => Not (forall (p : P U), sigma u p -> p (tau (sigma u))).
+
+Definition omega := tau (fun (p : P U) => forall (u : U), sigma u p -> p u).
+
+Definition D := forall (p : P U), sigma omega p -> p (tau (sigma omega)).
+
+Definition lem1 := fun (p : P U) (H1 : forall (u : U), sigma u p -> p u) => H1 omega (fun (u : U) => H1 (tau (sigma u))).
+
+Definition lem2 := lem1 delta (fun (u : U) (H2 : sigma u delta) (H3 : forall (p : P U), sigma u p → p (tau (sigma u))) => H3 delta H2 (fun (p : P U) => H3 (fun (x : U) => p (tau (sigma x))))).
+
+Definition lem3 := fun (p : P U) => lem1 (fun (u : U) => p (tau (sigma u))).
+
+Definition loop := lem2 lem3.
+Check loop : Empty.

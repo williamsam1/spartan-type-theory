@@ -87,6 +87,33 @@ let rec infer ctx {Location.data=e'; loc} =
      let e = check ctx e t in
      e, t
 
+  | Syntax.Nat -> TT.Nat, TT.ty_Type
+
+  | Syntax.Zero -> TT.Zero, TT.ty_Nat
+
+  | Syntax.Suc e ->
+    let e = check ctx e TT.ty_Nat in
+    TT.Suc e, TT.ty_Nat
+
+  | Syntax.Plus (e1, e2) ->
+    let e1 = check ctx e1 TT.ty_Nat in
+    let e2 = check ctx e2 TT.ty_Nat in
+    TT.Plus (e1, e2), TT.ty_Nat
+
+  | Syntax.NatInd (e1, (e2, (e3, e4))) ->
+    let e1 = check ctx e1 (TT.ty_Fun TT.ty_Nat TT.ty_Type) in
+    let e2 = check ctx e2 (TT.Ty (TT.Apply (e1, TT.Zero))) in
+    let var_n = Name.Ident ("n", Name.Word) in
+    let x = Name.anonymous () in
+    let nat_n = TT.index_expr 0 in
+    let nat_n2 = TT.index_expr 1 in
+    let t = TT.ty_Prod var_n TT.ty_Nat [(x, TT.Ty (TT.Apply (e1, nat_n)))] (TT.Ty (TT.Apply (e1, TT.Suc nat_n2))) in
+    let e3 = check ctx e3 t in
+    let e4 = check ctx e4 TT.ty_Nat in
+    TT.NatInd (e1, (e2, (e3, e4))),
+    TT.Ty (TT.Apply (e1, e4))
+    
+
 (** [check ctx e ty] checks that [e] has type [ty] in context [ctx].
     It returns the processed expression [e]. *)
 and check ctx ({Location.data=e'; loc} as e) ty =
@@ -108,6 +135,11 @@ and check ctx ({Location.data=e'; loc} as e) ty =
   | Syntax.Prod _
   | Syntax.Var _
   | Syntax.Type
+  | Syntax.Nat
+  | Syntax.Zero
+  | Syntax.Suc _
+  | Syntax.Plus _
+  | Syntax.NatInd _
   | Syntax.Ascribe _ ->
      let e, ty' = infer ctx e in
      if Equal.ty ctx ty ty'

@@ -17,6 +17,11 @@
 %token TYPE
 %token PROD
 %token LAMBDA
+%token NAT
+%token ZERO
+%token SUC
+%token PLUS
+%token NATIND
 
 (* Toplevel commands *)
 
@@ -84,8 +89,12 @@ plain_infix_term:
 
 app_term: mark_location(plain_app_term) { $1 }
 plain_app_term:
-  | e=plain_prefix_term          { e }
-  | e1=app_term e2=prefix_term   { Input.Apply (e1, e2) }
+  | e=plain_prefix_term                  { e }
+  | e1=app_term e2=prefix_term           { Input.Apply (e1, e2) }
+  | SUC e=prefix_term                    { Input.Suc e }
+  | PLUS e1=prefix_term e2=prefix_term   { Input.Plus (e1, e2) }
+  | NATIND e1=prefix_term e2=prefix_term
+    e3=prefix_term e4=prefix_term        { Input.NatInd (e1, (e2, (e3, e4))) }
 
 prefix_term: mark_location(plain_prefix_term) { $1 }
 plain_prefix_term:
@@ -100,6 +109,8 @@ plain_prefix_term:
 plain_simple_term:
   | LPAREN e=plain_term RPAREN         { e }
   | TYPE                               { Input.Type }
+  | NAT                                { Input.Nat }
+  | ZERO                               { Input.Zero }
   | x=var_name                         { Input.Var x }
 
 var_name:

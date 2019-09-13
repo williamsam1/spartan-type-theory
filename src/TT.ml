@@ -15,6 +15,11 @@ type expr =
   | Prod of (Name.ident * ty) * ty (** dependent product *)
   | Lambda of (Name.ident * ty) * expr (** lambda abstraction *)
   | Apply of expr * expr (** application *)
+  | Nat
+  | Zero
+  | Suc of expr
+  | Plus of expr * expr
+  | NatInd of expr * (expr * (expr * expr))
 
 (** Type *)
 and ty = Ty of expr
@@ -28,8 +33,26 @@ let new_atom : Name.ident -> atom =
   let k = ref (-1) in
   fun x -> incr k ; (x, !k)
 
+(** int as a bound expression. *)
+let index_expr i = Bound (i : index)
+
 (** [Type] as a type. *)
 let ty_Type = Ty Type
+
+(** [Nat] as a type. *)
+let ty_Nat = Ty Nat
+
+(** function type [a -> b] *)
+let ty_Fun a b = Ty (Prod ((Name.anonymous (), a), b))
+
+(** nested product type (x1 : A1) (x2 : A2) ... (xn : An) b *)
+let rec ty_Prod x e1 es b = 
+  match es with
+  | [] ->
+    Ty (Prod ((x, e1), b))
+  | (y, e2) :: es ->
+    let p = ty_Prod y e2 es b in
+    Ty (Prod ((x, e1), p))
 
 (** [instantiate ~lvl:k e e'] instantiates deBruijn index [k] with [e] in expression [e']. *)
 let rec instantiate ?(lvl=0) e e' =
@@ -56,6 +79,17 @@ let rec instantiate ?(lvl=0) e e' =
      let e1 = instantiate ~lvl e e1
      and e2 = instantiate ~lvl e e2 in
      Apply (e1, e2)
+
+  | Nat -> e'
+
+  | Zero -> e'
+
+  | Suc e1 -> Suc (instantiate ~lvl e e1)
+
+  | Plus (e1, e2) -> Plus (instantiate ~lvl e e1, instantiate ~lvl e e2)
+
+  | NatInd (e1, (e2, (e3, e4))) ->
+    NatInd (instantiate ~lvl e e1, (instantiate ~lvl e e2, (instantiate ~lvl e e3, instantiate ~lvl e e4)))
 
 
 (** [instantiate k e t] instantiates deBruijn index [k] with [e] in type [t]. *)
@@ -88,6 +122,21 @@ let rec abstract ?(lvl=0) x e =
      and e2 = abstract ~lvl x e2 in
      Apply (e1, e2)
 
+  | Nat -> e
+
+  | Zero -> e
+
+  | Suc e1 -> Suc (abstract ~lvl x e1)
+
+  | Plus (e1, e2) -> Plus (abstract ~lvl x e1, abstract ~lvl x e2)
+
+  | NatInd (e1, (e2, (e3, e4))) ->
+    let e1 = abstract ~lvl x e1
+    and e2 = abstract ~lvl x e2
+    and e3 = abstract ~lvl x e3
+    and e4 = abstract ~lvl x e4 in
+    NatInd (e1, (e2, (e3, e4)))
+
 (** [abstract_ty ~lvl x t] abstracts atom [x] into bound index [lvl] in type [t]. *)
 and abstract_ty ?(lvl=0) x (Ty t) =
   let t = abstract ~lvl x t in
@@ -107,6 +156,12 @@ let rec occurs k = function
   | Prod ((_, t), u) -> occurs_ty k t || occurs_ty (k+1) u
   | Lambda ((_, t), e) -> occurs_ty k t || occurs (k+1) e
   | Apply (e1, e2) -> occurs k e1 || occurs k e2
+  | Nat -> false
+  | Zero -> false
+  | Suc e -> occurs k e
+  | Plus (e1, e2) -> occurs k e1 || occurs k e2
+  | NatInd (e1, (e2, (e3, e4))) ->
+    occurs k e1 || occurs k e2 || occurs k e3 || occurs k e4
 
 (** [occurs_ty k t] returns [true] when de Bruijn index [k] occurs in type [t]. *)
 and occurs_ty k (Ty t) = occurs k t
@@ -136,6 +191,17 @@ let print_debruijn xs k ppf =
   let x = List.nth xs k in
   Name.print_ident x ppf
 
+let rec to_int e =
+   match e with
+      | Zero -> Some 0
+      | Suc e ->
+        begin
+          match (to_int e) with
+          | None -> None
+          | Some x -> Some (x + 1)
+        end
+      | _ -> None
+
 let rec print_expr ?max_level ~penv e ppf =
     print_expr' ~penv ?max_level e ppf
 
@@ -155,7 +221,36 @@ and print_expr' ~penv ?max_level e ppf =
 
       | Prod ((x, u), t) -> print_prod ?max_level ~penv ((x, u), t) ppf
 
+      | Nat ->
+        Format.fprintf ppf "Nat"
+      
+      | Zero ->
+        Format.fprintf ppf "0"
+
+      | Suc e ->
+        let x = to_int (Suc e) in
+        begin
+          match x with
+          | None -> Format.fprintf ppf "Suc(%t)"
+                    (print_expr ~max_level:Level.app_right ~penv e)
+          | Some x -> Format.fprintf ppf "%i" x
+        end
+
+      | Plus (e1, e2) ->
+        Format.fprintf ppf "%t + %t"
+        (print_expr ~max_level:Level.eq_left ~penv e1)
+        (print_expr ~max_level:Level.eq_right ~penv e2)
+
+      | NatInd (e1, (e2, (e3, e4))) ->
+        Format.fprintf ppf "NatInd(%t,%t,%t,%t)"
+        (print_expr ?max_level ~penv e1)
+        (print_expr ?max_level ~penv e2)
+        (print_expr ?max_level ~penv e3)
+        (print_expr ?max_level ~penv e4)
+     
+
 and print_ty ?max_level ~penv (Ty t) ppf = print_expr ?max_level ~penv t ppf
+
 
 (** [print_app e1 e2 ppf] prints the application [e1 e2] using formatter [ppf],
     possibly as a prefix or infix operator. *)

@@ -12,6 +12,11 @@ and expr' =
   | Lambda of (Name.ident * ty option) * expr
   | Apply of expr * expr
   | Ascribe of expr * ty
+  | Nat
+  | Zero
+  | Suc of expr
+  | Plus of expr * expr
+  | NatInd of expr * (expr * (expr * expr))
 
 (** Types (equal to expressions at this point). *)
 and ty = expr
@@ -55,6 +60,16 @@ and shift' n k = function
      let e = shift n k e
      and t = shift_ty n k t in
      Ascribe (e, t)
+
+  | Nat -> Nat
+
+  | Zero -> Zero
+
+  | Suc e -> Suc (shift n k e)
+
+  | Plus (e1, e2) -> Plus (shift n k e1, shift n k e2)
+
+  | NatInd (e1, (e2, (e3, e4))) -> NatInd (shift n k e1, (shift n k e2, (shift n k e3, shift n k e4)))
 
 and shift_ty n k t = shift n k t
 

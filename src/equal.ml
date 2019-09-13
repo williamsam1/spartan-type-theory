@@ -5,6 +5,18 @@ type strategy =
   | WHNF (** normalize to weak head-normal form *)
   | CBV (** call-by-value normalization *)
 
+let rec eval_plus m n =
+  match m with
+  | TT.Zero -> n
+  | TT.Suc m -> TT.Suc (eval_plus m n)
+  | _ -> assert false
+
+let rec eval_nat_ind a f n =
+  match n with
+  | TT.Zero -> a
+  | TT.Suc n -> TT.Apply (TT.Apply (f, n), eval_nat_ind a f n)
+  | _ -> assert false
+
 (** Normalize an expression. *)
 let rec norm_expr ~strategy ctx e =
   match e with
@@ -40,6 +52,24 @@ let rec norm_expr ~strategy ctx e =
       | _ -> TT.Apply (e1, e2)
     end
 
+  | TT.Nat -> e
+
+  | TT.Zero -> e
+
+  | TT.Suc e ->
+    let n = norm_expr ~strategy ctx e in
+    TT.Suc n
+
+  | TT.Plus (e1, e2) ->
+    let m = norm_expr ~strategy ctx e1
+    and n = norm_expr ~strategy ctx e2 in
+    eval_plus m n
+
+  | TT.NatInd (_, (a, (f, n))) ->
+    let n = norm_expr ~strategy ctx n in
+    let e = eval_nat_ind a f n in
+    norm_expr ~strategy ctx e
+
 (** Normalize a type *)
 let norm_ty ~strategy ctx (TT.Ty ty) =
   let ty = norm_expr ~strategy ctx ty in
@@ -71,14 +101,19 @@ let rec expr ctx e1 e2 ty =
       expr ctx e1 e2 u
 
     | TT.Type
+    | TT.Nat
     | TT.Apply _
     | TT.Bound _
+    | TT.NatInd _
     | TT.Atom _ ->
       (* Type-directed phase is done, we compare normal forms. *)
       let e1 = norm_expr ~strategy:WHNF ctx e1
       and e2 = norm_expr ~strategy:WHNF ctx e2 in
       expr_whnf ctx e1 e2
-
+    
+    | TT.Zero
+    | TT.Suc _
+    | TT.Plus _
     | TT.Lambda _ ->
       (* A type should never normalize to an abstraction *)
       assert false
@@ -89,6 +124,12 @@ and expr_whnf ctx e1 e2 =
   match e1, e2 with
 
   | TT.Type, TT.Type -> true
+
+  | TT.Nat, TT.Nat -> true
+
+  | TT.Zero, TT.Zero -> true
+
+  | TT.Suc e1, TT.Suc e2 -> expr_whnf ctx e1 e2
 
   | TT.Bound k1, TT.Bound k2 ->
     (* We should never be in a situation where we compare bound variables,
@@ -128,7 +169,7 @@ and expr_whnf ctx e1 e2 =
     end
 
 
-  | (TT.Type | TT.Bound _ | TT.Atom _ | TT.Prod _ | TT.Lambda _ | TT.Apply _), _ ->
+  | (TT.Type | TT.Nat | TT.Zero | TT.Suc _ | TT.Plus _ | TT.NatInd _ | TT.Bound _ | TT.Atom _ | TT.Prod _ | TT.Lambda _ | TT.Apply _), _ ->
     false
 
 (** Compare two types. *)

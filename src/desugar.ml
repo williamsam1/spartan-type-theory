@@ -79,6 +79,26 @@ let rec expr ctx {Location.data=e; Location.loc=loc} =
        and e2 = expr ctx e2 in
        Location.locate ~loc (Syntax.Apply (e1, e2))
 
+    | Input.Nat -> Location.locate ~loc Syntax.Nat
+
+    | Input.Zero -> Location.locate ~loc Syntax.Zero
+
+    | Input.Suc e ->
+      let e = expr ctx e in
+      Location.locate ~loc (Syntax.Suc e)
+
+    | Input.Plus (e1, e2) ->
+      let e1 = expr ctx e1
+      and e2 = expr ctx e2 in
+      Location.locate ~loc (Syntax.Plus (e1, e2))
+
+    | Input.NatInd (e1, (e2, (e3, e4))) ->
+      let e1 = expr ctx e1
+      and e2 = expr ctx e2
+      and e3 = expr ctx e3
+      and e4 = expr ctx e4 in
+      Location.locate ~loc (Syntax.NatInd (e1, (e2, (e3, e4))))
+
     | Input.Ascribe (e, t) ->
        let e = expr ctx e
        and t = ty ctx t in
