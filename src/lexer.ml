@@ -18,7 +18,13 @@ let reserved = [
   ("Zero", Parser.ZERO) ;
   ("Suc", Parser.SUC) ;
   ("Plus", Parser.PLUS) ;
-  ("NatInd", Parser.NATIND)
+  ("NatInd", Parser.NATIND) ;
+  ("App", Parser.APP) ;
+  ("Ret", Parser.RET) ;
+  ("Fmap", Parser.FMAP) ;
+  ("LiftA", Parser.LIFTA) ;
+  ("Bind", Parser.BIND) ;
+  ("AppEval", Parser.APPEVAL)
 ]
 
 let name =

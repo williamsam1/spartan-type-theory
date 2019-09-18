@@ -1,0 +1,19 @@
+Definition fmap := (fun (A : Type) (B : A -> Type)
+    (f : forall (x : A), B x) (a : App A) => Fmap f a)
+    : forall (A : Type) (B : A -> Type),
+        (forall (x : A), B x) -> forall (a : App A), App (B (AppEval a)).
+Definition liftA := (fun (A : Type) (B : A -> Type)
+    (f : App (forall (x : A), B x)) (a : App A) => LiftA f a)
+    : forall (A : Type) (B : A -> Type),
+        App (forall (x : A), B x) -> forall (a : App A), App (B (AppEval a)).
+Definition bind := (fun (A : Type) (B : A -> Type)
+    (f : forall (x : A), App (B x)) (a : App A) => Bind f a)
+    : forall (A : Type) (B : A -> Type),
+        (forall (x : A), App (B x)) -> forall (a : App A), App (B (AppEval a)).
+
+Definition id := (fun (A : Type) (x : A) => x) : forall (A : Type), A -> A.
+
+Definition retId := Ret id : App (forall (A : Type), A -> A).
+Eval retId.
+Definition evalRetId := AppEval retId : forall (A : Type), A -> A.
+Eval evalRetId.

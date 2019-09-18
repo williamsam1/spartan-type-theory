@@ -22,6 +22,12 @@
 %token SUC
 %token PLUS
 %token NATIND
+%token APP
+%token RET
+%token FMAP
+%token LIFTA
+%token BIND
+%token APPEVAL
 
 (* Toplevel commands *)
 
@@ -95,6 +101,12 @@ plain_app_term:
   | PLUS e1=prefix_term e2=prefix_term   { Input.Plus (e1, e2) }
   | NATIND e1=prefix_term e2=prefix_term
     e3=prefix_term e4=prefix_term        { Input.NatInd (e1, (e2, (e3, e4))) }
+  | APP e1=prefix_term                   { Input.App e1 }
+  | RET e1=prefix_term                   { Input.Ret e1 }
+  | FMAP e1=prefix_term e2=prefix_term   { Input.Fmap (e1, e2) }
+  | LIFTA e1=prefix_term e2=prefix_term  { Input.LiftA (e1, e2) }
+  | BIND e1=prefix_term e2=prefix_term   { Input.Bind (e1, e2) }
+  | APPEVAL e1=prefix_term                  { Input.Eval e1 }
 
 prefix_term: mark_location(plain_prefix_term) { $1 }
 plain_prefix_term:

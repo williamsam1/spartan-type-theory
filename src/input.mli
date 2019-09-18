@@ -15,6 +15,12 @@ and expr' =
   | Suc of expr
   | Plus of expr * expr
   | NatInd of expr * (expr * (expr * expr))
+  | App of expr
+  | Ret of expr
+  | Fmap of expr * expr
+  | LiftA of expr * expr
+  | Bind of expr * expr
+  | Eval of expr
    
 
 (** Parsed type (equal to expression). *)

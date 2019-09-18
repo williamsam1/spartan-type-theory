@@ -6,6 +6,7 @@ type type_error =
   | TypeExpected of TT.ty * TT.ty
   | TypeExpectedButFunction of TT.ty
   | FunctionExpected of TT.ty
+  | AppExpected of TT.ty
   | CannotInferArgument of Name.ident
 
 exception Error of type_error Location.located
@@ -29,6 +30,10 @@ let print_error ~penv err ppf =
 
   | FunctionExpected ty ->
      Format.fprintf ppf "this expression should be a function but has type %t"
+                        (TT.print_ty ~penv ty)
+
+  | AppExpected ty ->
+     Format.fprintf ppf "this expression should be an App but has type %t"
                         (TT.print_ty ~penv ty)
 
   | CannotInferArgument x ->
@@ -112,7 +117,65 @@ let rec infer ctx {Location.data=e'; loc} =
     let e4 = check ctx e4 TT.ty_Nat in
     TT.NatInd (e1, (e2, (e3, e4))),
     TT.Ty (TT.Apply (e1, e4))
-    
+
+  | Syntax.App e1 ->
+    let e1 = check ctx e1 TT.ty_Type in
+    TT.App e1, TT.ty_Type
+
+  | Syntax.Ret e1 ->
+    let e1, TT.Ty t1 = infer ctx e1 in
+    TT.Ret e1, TT.Ty (TT.App t1)
+
+  | Syntax.Fmap (e1, e2) ->
+    let e1, t1 = infer ctx e1 in
+    begin
+      match Equal.as_prod ctx t1 with
+      | None -> error ~loc (FunctionExpected t1)
+      | Some ((x, TT.Ty t), TT.Ty u) ->
+        let e2 = check ctx e2 (TT.Ty (TT.App t)) in
+          TT.Fmap (e1, e2),
+          TT.Ty (TT.App (TT.instantiate (TT.Eval e2) u))
+    end
+
+  | Syntax.LiftA (e1, e2) ->
+    let e1, t1 = infer ctx e1 in
+    begin
+      match Equal.as_app ctx t1 with
+      | None -> error ~loc (AppExpected t1)
+      | Some t1 ->
+        begin
+          match Equal.as_prod ctx (TT.Ty t1) with
+          | None -> error ~loc (FunctionExpected (TT.Ty t1))
+          | Some ((x, TT.Ty t), TT.Ty u) ->
+            let e2 = check ctx e2 (TT.Ty (TT.App t)) in
+              TT.LiftA (e1, e2),
+              TT.Ty (TT.App (TT.instantiate (TT.Eval e2) u))
+        end
+    end
+
+  | Syntax.Bind (e1, e2) ->
+    let e1, t1 = infer ctx e1 in
+    begin
+      match Equal.as_prod ctx t1 with
+      | None -> error ~loc (FunctionExpected t1)
+      | Some ((x, TT.Ty t), TT.Ty u) ->
+        begin
+          match u with
+          | TT.App u -> 
+            let e2 = check ctx e2 (TT.Ty (TT.App t)) in
+              TT.Bind (e1, e2),
+              TT.Ty (TT.App (TT.instantiate (TT.Eval e2) u))
+          | _ -> error ~loc (AppExpected (TT.Ty u))
+        end
+    end
+
+  | Syntax.Eval e1 ->
+    let e1, t1 = infer ctx e1 in
+    begin
+       match Equal.as_app ctx t1 with
+       | None -> error ~loc (AppExpected t1)
+       | Some t1 -> TT.Eval e1, TT.Ty t1
+     end
 
 (** [check ctx e ty] checks that [e] has type [ty] in context [ctx].
     It returns the processed expression [e]. *)
@@ -140,6 +203,12 @@ and check ctx ({Location.data=e'; loc} as e) ty =
   | Syntax.Suc _
   | Syntax.Plus _
   | Syntax.NatInd _
+  | Syntax.App _
+  | Syntax.Ret _
+  | Syntax.Fmap _
+  | Syntax.LiftA _
+  | Syntax.Bind _
+  | Syntax.Eval _
   | Syntax.Ascribe _ ->
      let e, ty' = infer ctx e in
      if Equal.ty ctx ty ty'

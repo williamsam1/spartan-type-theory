@@ -5,16 +5,20 @@ type strategy =
   | WHNF (** normalize to weak head-normal form *)
   | CBV (** call-by-value normalization *)
 
+(** Normalize an addition. *)
 let rec eval_plus m n =
   match m with
   | TT.Zero -> n
   | TT.Suc m -> TT.Suc (eval_plus m n)
+  | TT.Atom x -> TT.Plus (m, n)
   | _ -> assert false
 
-let rec eval_nat_ind a f n =
+(** Normalize a natural number induction. *)
+let rec eval_nat_ind t a f n =
   match n with
   | TT.Zero -> a
-  | TT.Suc n -> TT.Apply (TT.Apply (f, n), eval_nat_ind a f n)
+  | TT.Suc n -> TT.Apply (TT.Apply (f, n), eval_nat_ind t a f n)
+  | TT.Atom x -> TT.NatInd (t, (a, (f, n)))
   | _ -> assert false
 
 (** Normalize an expression. *)
@@ -65,10 +69,54 @@ let rec norm_expr ~strategy ctx e =
     and n = norm_expr ~strategy ctx e2 in
     eval_plus m n
 
-  | TT.NatInd (_, (a, (f, n))) ->
+  | TT.NatInd (t, (a, (f, n))) ->
     let n = norm_expr ~strategy ctx n in
-    let e = eval_nat_ind a f n in
+    let e = eval_nat_ind t a f n in
     norm_expr ~strategy ctx e
+
+  | TT.App e1 ->
+    let e1 = norm_expr ~strategy ctx e1 in
+    TT.App e1
+
+  | TT.Ret e1 ->
+    let e1 = norm_expr ~strategy ctx e1 in
+    TT.Ret e1
+
+  | TT.Fmap (e1, e2) ->
+    let e1 = norm_expr ~strategy ctx e1
+    and e2 = norm_expr ~strategy ctx e2 in
+    TT.Fmap (e1, e2)
+
+  | TT.LiftA (e1, e2) ->
+    let e1 = norm_expr ~strategy ctx e1
+    and e2 = norm_expr ~strategy ctx e2 in
+    TT.LiftA (e1, e2)
+
+  | TT.Bind (e1, e2) ->
+    let e1 = norm_expr ~strategy ctx e1
+    and e2 = norm_expr ~strategy ctx e2 in
+    TT.Bind (e1, e2)
+
+  | TT.Eval e1 ->
+    let e1 = norm_expr ~strategy ctx e1 in
+    eval_eval ~strategy ctx e1
+
+(** Normalize an evaluation of a held application. *)
+and eval_eval ~strategy ctx e =
+  match e with
+  | TT.Ret e -> norm_expr ~strategy ctx e
+  | TT.Fmap (e1, e2) ->
+    let e2 = eval_eval ~strategy ctx e2 in
+    norm_expr ~strategy ctx (TT.Apply (e1, e2))
+  | TT.LiftA (e1, e2) ->
+    let e1 = eval_eval ~strategy ctx e1
+    and e2 = eval_eval ~strategy ctx e2 in
+    norm_expr ~strategy ctx (TT.Apply (e1, e2))
+  | TT.Bind (e1, e2) ->
+    let e2 = eval_eval ~strategy ctx e2 in
+    eval_eval ~strategy ctx (norm_expr ~strategy ctx (TT.Apply (e1, e2)))
+  | TT.Atom x -> e
+  | _ -> assert false
 
 (** Normalize a type *)
 let norm_ty ~strategy ctx (TT.Ty ty) =
@@ -80,6 +128,13 @@ let as_prod ctx t =
   let TT.Ty t' = norm_ty ~strategy:WHNF ctx t in
   match t' with
   | TT.Prod ((x, t), u) -> Some ((x, t), u)
+  | _ -> None
+
+(** Normalize a type to an App type. *)
+let as_app ctx t =
+  let TT.Ty t' = norm_ty ~strategy:WHNF ctx t in
+  match t' with
+  | TT.App t -> Some t
   | _ -> None
 
 (** Compare expressions [e1] and [e2] at type [ty]? *)
@@ -105,6 +160,8 @@ let rec expr ctx e1 e2 ty =
     | TT.Apply _
     | TT.Bound _
     | TT.NatInd _
+    | TT.App _
+    | TT.Eval _
     | TT.Atom _ ->
       (* Type-directed phase is done, we compare normal forms. *)
       let e1 = norm_expr ~strategy:WHNF ctx e1
@@ -114,6 +171,10 @@ let rec expr ctx e1 e2 ty =
     | TT.Zero
     | TT.Suc _
     | TT.Plus _
+    | TT.Ret _
+    | TT.Fmap _
+    | TT.LiftA _
+    | TT.Bind _
     | TT.Lambda _ ->
       (* A type should never normalize to an abstraction *)
       assert false
@@ -130,6 +191,31 @@ and expr_whnf ctx e1 e2 =
   | TT.Zero, TT.Zero -> true
 
   | TT.Suc e1, TT.Suc e2 -> expr_whnf ctx e1 e2
+
+  | TT.Plus (e11, e12), TT.Plus (e21, e22) ->
+    expr_whnf ctx e11 e21 && expr_whnf ctx e12 e22
+
+  | TT.NatInd (e11, (e12, (e13, e14))), TT.NatInd (e21, (e22, (e23, e24))) ->
+    let e1 = expr_whnf ctx e11 e21
+    and e2 = expr_whnf ctx e12 e22
+    and e3 = expr_whnf ctx e13 e23
+    and e4 = expr_whnf ctx e14 e24 in
+    e1 && e2 && e3 && e4
+
+  | TT.App e1, TT.App e2 -> expr_whnf ctx e1 e2
+
+  | TT.Ret e1, TT.Ret e2 -> expr_whnf ctx e1 e2
+
+  | TT.Fmap (e11, e12), TT.Fmap (e21, e22) ->
+    expr_whnf ctx e11 e21 && expr_whnf ctx e12 e22
+
+  | TT.LiftA (e11, e12), TT.LiftA (e21, e22) ->
+    expr_whnf ctx e11 e21 && expr_whnf ctx e12 e22
+
+  | TT.Bind (e11, e12), TT.Bind (e21, e22) ->
+    expr_whnf ctx e11 e21 && expr_whnf ctx e12 e22
+
+  | TT.Eval e1, TT.Eval e2 -> expr_whnf ctx e1 e2
 
   | TT.Bound k1, TT.Bound k2 ->
     (* We should never be in a situation where we compare bound variables,
@@ -169,7 +255,9 @@ and expr_whnf ctx e1 e2 =
     end
 
 
-  | (TT.Type | TT.Nat | TT.Zero | TT.Suc _ | TT.Plus _ | TT.NatInd _ | TT.Bound _ | TT.Atom _ | TT.Prod _ | TT.Lambda _ | TT.Apply _), _ ->
+  | (TT.Type | TT.Nat | TT.Zero | TT.Suc _ | TT.Plus _ | TT.NatInd _ | TT.Bound _
+    | TT.Atom _ | TT.Prod _ | TT.Lambda _ | TT.Apply _ | TT.App _ | TT.Ret _ | TT.Fmap _
+    | TT.LiftA _ | TT.Bind _ | TT.Eval _), _ ->
     false
 
 (** Compare two types. *)

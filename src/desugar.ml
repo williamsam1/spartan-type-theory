@@ -104,6 +104,33 @@ let rec expr ctx {Location.data=e; Location.loc=loc} =
        and t = ty ctx t in
        Location.locate ~loc (Syntax.Ascribe (e, t))
 
+    | Input.App e1 ->
+      let e1 = expr ctx e1 in
+      Location.locate ~loc (Syntax.App e1)
+
+    | Input.Ret e1 ->
+      let e1 = expr ctx e1 in
+      Location.locate ~loc (Syntax.Ret e1)
+
+    | Input.Fmap (e1, e2) ->
+      let e1 = expr ctx e1
+      and e2 = expr ctx e2 in
+      Location.locate ~loc (Syntax.Fmap (e1, e2))
+
+    | Input.LiftA (e1, e2) ->
+      let e1 = expr ctx e1
+      and e2 = expr ctx e2 in
+      Location.locate ~loc (Syntax.LiftA (e1, e2))
+
+    | Input.Bind (e1, e2) ->
+      let e1 = expr ctx e1
+      and e2 = expr ctx e2 in
+      Location.locate ~loc (Syntax.Bind (e1, e2))
+
+    | Input.Eval e1 ->
+      let e1 = expr ctx e1 in
+      Location.locate ~loc (Syntax.Eval e1)
+
 
 (** Desugar a type, which at this stage is the same as an expressions. *)
 and ty ctx t = expr ctx t

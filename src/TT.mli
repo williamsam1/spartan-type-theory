@@ -14,11 +14,17 @@ type expr =
   | Prod of (Name.ident * ty) * ty (** dependent product *)
   | Lambda of (Name.ident * ty) * expr (** lambda abstraction *)
   | Apply of expr * expr (** application *)
-  | Nat
-  | Zero
-  | Suc of expr
-  | Plus of expr * expr
-  | NatInd of expr * (expr * (expr * expr))
+  | Nat (** natural number type *)
+  | Zero (** first natural number *)
+  | Suc of expr (** successor natural numbers *)
+  | Plus of expr * expr (** primitive addition *)
+  | NatInd of expr * (expr * (expr * expr)) (** natural number induction *)
+  | App of expr (** held application *)
+  | Ret of expr (** return/pure for App *)
+  | Fmap of expr * expr (** fmap for App *)
+  | LiftA of expr * expr (** liftA for App *)
+  | Bind of expr * expr (** bind for App *)
+  | Eval of expr (** evaluation of held application *)
 
 
 (** Type *)
