@@ -30,6 +30,7 @@
 %token APPEVAL
 %token EQ
 %token REFL
+%token EQIND
 
 (* Toplevel commands *)
 
@@ -111,6 +112,9 @@ plain_app_term:
   | APPEVAL e1=prefix_term               { Input.Eval e1 }
   | EQ e1=prefix_term e2=prefix_term     { Input.Eq (e1, e2) }
   | REFL e1=prefix_term               	 { Input.Refl e1 }
+  | EQIND e1=prefix_term e2=prefix_term
+      e3=prefix_term e4=prefix_term
+      e5=prefix_term                     { Input.EqInd (e1, (e2, (e3, (e4, e5)))) }
 
 prefix_term: mark_location(plain_prefix_term) { $1 }
 plain_prefix_term:

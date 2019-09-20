@@ -31,6 +31,7 @@ type expr =
   | Eval of expr (** evaluation of held application *)
   | Eq of expr * expr (** propositional equality *)
   | Refl of expr (** reflexivity *)
+  | EqInd of expr * (expr * (expr * (expr * expr))) (** equality induction *)
 
 (** Type *)
 and ty = Ty of expr
@@ -56,14 +57,19 @@ let ty_Nat = Ty Nat
 (** function type [a -> b] *)
 let ty_Fun a b = Ty (Prod ((Name.anonymous (), a), b))
 
-(** nested product type (x1 : A1) (x2 : A2) ... (xn : An) b *)
+(** nested product type [(x1 : A1) (x2 : A2) ... (xn : An) b] *)
 let rec ty_Prod x e1 es b = 
   match es with
-  | [] ->
-    Ty (Prod ((x, e1), b))
+  | [] -> Ty (Prod ((x, e1), b))
   | (y, e2) :: es ->
     let p = ty_Prod y e2 es b in
     Ty (Prod ((x, e1), p))
+
+(** nested application [e1 e2 ... en] *)
+let rec multi_apply e1 es = 
+  match es with
+  | [] -> e1
+  | (e2 :: es) -> multi_apply (Apply (e1, e2)) es
 
 (** [instantiate ~lvl:k e e'] instantiates deBruijn index [k] with [e] in expression [e']. *)
 let rec instantiate ?(lvl=0) e e' =
@@ -146,6 +152,14 @@ let rec instantiate ?(lvl=0) e e' =
   | Refl e1 ->
     let e1 = instantiate ~lvl e e1 in
     Refl e1
+
+  | EqInd (e1, (e2, (e3, (e4, e5)))) ->
+    let e1 = instantiate ~lvl e e1
+    and e2 = instantiate ~lvl e e2
+    and e3 = instantiate ~lvl e e3
+    and e4 = instantiate ~lvl e e4
+    and e5 = instantiate ~lvl e e5 in
+    EqInd (e1, (e2, (e3, (e4, e5))))
 
 
 (** [instantiate k e t] instantiates deBruijn index [k] with [e] in type [t]. *)
@@ -233,6 +247,14 @@ let rec abstract ?(lvl=0) x e =
     let e1 = abstract ~lvl x e1 in
     Refl e1
 
+  | EqInd (e1, (e2, (e3, (e4, e5)))) ->
+    let e1 = abstract ~lvl x e1
+    and e2 = abstract ~lvl x e2
+    and e3 = abstract ~lvl x e3
+    and e4 = abstract ~lvl x e4
+    and e5 = abstract ~lvl x e5 in
+    EqInd (e1, (e2, (e3, (e4, e5))))
+
 (** [abstract_ty ~lvl x t] abstracts atom [x] into bound index [lvl] in type [t]. *)
 and abstract_ty ?(lvl=0) x (Ty t) =
   let t = abstract ~lvl x t in
@@ -266,6 +288,8 @@ let rec occurs k = function
   | Eval e1 -> occurs k e1
   | Eq (e1, e2) -> occurs k e1 || occurs k e2
   | Refl e1 -> occurs k e1
+  | EqInd (e1, (e2, (e3, (e4, e5)))) ->
+    occurs k e1 || occurs k e2 || occurs k e3 || occurs k e4 || occurs k e5
 
 
 (** [occurs_ty k t] returns [true] when de Bruijn index [k] occurs in type [t]. *)
@@ -386,6 +410,14 @@ and print_expr' ~penv ?max_level e ppf =
       | Refl e1 ->
         Format.fprintf ppf "refl(%t)"
         (print_expr ?max_level ~penv e1)
+
+      | EqInd (e1, (e2, (e3, (e4, e5)))) ->
+        Format.fprintf ppf "EqInd(%t,%t,%t,%t,%t)"
+        (print_expr ?max_level ~penv e1)
+        (print_expr ?max_level ~penv e2)
+        (print_expr ?max_level ~penv e3)
+        (print_expr ?max_level ~penv e4)
+        (print_expr ?max_level ~penv e5)
      
 
 and print_ty ?max_level ~penv (Ty t) ppf = print_expr ?max_level ~penv t ppf

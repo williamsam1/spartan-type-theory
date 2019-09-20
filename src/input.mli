@@ -23,6 +23,7 @@ and expr' =
   | Eval of expr
   | Eq of expr * expr
   | Refl of expr
+  | EqInd of expr * (expr * (expr * (expr * expr)))
 
 (** Parsed type (equal to expression). *)
 and ty = expr

@@ -26,27 +26,27 @@ Eval eval_ret_id.
 (** Propositional equality for evaluation of held applications *)
 
 (** eval (ret a) = a *)
-Definition eval_ret := (fun (A : Type) (a : A) => refl a)
+Definition eval_ret := (fun (A : Type) (a : A) => Refl a)
 	: forall (A : Type) (a : A), Eq (AppEval (Ret a)) a.
 Check eval_ret.
 
 (** eval (fmap f a) = f (eval a) *)
 Definition eval_fmap := (fun (A : Type) (B : A -> Type)
-	(f : forall (x : A), B x) (a : App A) => refl (f (AppEval a)))
+	(f : forall (x : A), B x) (a : App A) => Refl (f (AppEval a)))
 	: forall (A : Type) (B : A -> Type) (f : forall (x : A), B x) (a : App A),
 		Eq (AppEval (Fmap f a)) (f (AppEval a)).
 Check eval_fmap.
 
 (** eval (liftA f a) = (eval f) (eval a) *)
 Definition eval_liftA := (fun (A : Type) (B : A -> Type)
-	(f : App (forall (x : A), B x)) (a : App A) => refl ((AppEval f) (AppEval a)))
+	(f : App (forall (x : A), B x)) (a : App A) => Refl ((AppEval f) (AppEval a)))
 	: forall (A : Type) (B : A -> Type) (f : App (forall (x : A), B x)) (a : App A),
 		Eq (AppEval (LiftA f a)) ((AppEval f) (AppEval a)).
 Check eval_liftA.
 
 (** eval (bind f a) = eval (f (eval a)) *)
 Definition eval_bind := (fun (A : Type) (B : A -> Type)
-	(f : forall (x : A), App (B x)) (a : App A) => refl (AppEval (f (AppEval a))))
+	(f : forall (x : A), App (B x)) (a : App A) => Refl (AppEval (f (AppEval a))))
 	: forall (A : Type) (B : A -> Type) (f : forall (x : A), App (B x)) (a : App A),
 		Eq (AppEval (Bind f a)) (AppEval (f (AppEval a))).
 Check eval_bind.

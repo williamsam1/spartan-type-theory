@@ -103,6 +103,14 @@ let rec norm_expr ~strategy ctx e =
     let e1 = norm_expr ~strategy ctx e1 in
     TT.Refl e1
 
+  | TT.EqInd (_, (r, (_, (_, p)))) ->
+    let r = norm_expr ~strategy ctx r
+    and e = norm_expr ~strategy ctx p in
+    match p with
+    | TT.Refl a -> norm_expr ~strategy ctx (TT.Apply (r, a))
+    | _ -> e
+    
+
 (** Normalize a natural number induction. *)
 and eval_nat_ind ~strategy ctx t a f n =
   match n with
@@ -246,6 +254,9 @@ let rec infer_TT ctx e =
 
   | TT.Refl e1 -> TT.Ty (TT.Eq (e1, e1))
 
+  | TT.EqInd (e1, (e2, (e3, (e4, e5)))) ->
+    TT.Ty (TT.multi_apply e1 [ e3 ; e4 ; e5 ])
+
 (** Compare expressions [e1] and [e2] at type [ty]? *)
 let rec expr ctx e1 e2 ty =
   (* short-circuit *)
@@ -272,6 +283,7 @@ let rec expr ctx e1 e2 ty =
     | TT.App _
     | TT.Eval _
     | TT.Eq _
+    | TT.EqInd _
     | TT.Atom _ ->
       (* Type-directed phase is done, we compare normal forms. *)
       let e1 = norm_expr ~strategy:WHNF ctx e1
@@ -332,6 +344,14 @@ and expr_whnf ctx e1 e2 =
   | TT.Eq (e11, e12), TT.Eq (e21, e22) ->
     expr_whnf ctx e11 e21 && expr_whnf ctx e12 e22
 
+  | TT.EqInd (e11, (e12, (e13, (e14, e15)))), TT.EqInd (e21, (e22, (e23, (e24, e25)))) ->
+    let e1 = expr_whnf ctx e11 e21
+    and e2 = expr_whnf ctx e12 e22
+    and e3 = expr_whnf ctx e13 e23
+    and e4 = expr_whnf ctx e14 e24
+    and e5 = expr_whnf ctx e15 e25 in
+    e1 && e2 && e3 && e4 && e5
+
   | TT.Refl e1, TT.Refl e2 -> expr_whnf ctx e1 e2
 
   | TT.Bound k1, TT.Bound k2 ->
@@ -370,7 +390,7 @@ and expr_whnf ctx e1 e2 =
 
   | (TT.Type | TT.Nat | TT.Zero | TT.Suc _ | TT.Plus _ | TT.NatInd _ | TT.Bound _
     | TT.Atom _ | TT.Prod _ | TT.Lambda _ | TT.Apply _ | TT.App _ | TT.Ret _ | TT.Fmap _
-    | TT.LiftA _ | TT.Bind _ | TT.Eval _ | TT.Eq _ | TT.Refl _), _ ->
+    | TT.LiftA _ | TT.Bind _ | TT.Eval _ | TT.Eq _ | TT.Refl _ | TT.EqInd _), _ ->
     false
 
 (** Compare two types. *)

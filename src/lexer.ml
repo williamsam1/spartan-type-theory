@@ -26,7 +26,8 @@ let reserved = [
   ("Bind", Parser.BIND) ;
   ("AppEval", Parser.APPEVAL) ;
   ("Eq", Parser.EQ) ;
-  ("refl", Parser.REFL)
+  ("Refl", Parser.REFL) ;
+  ("EqInd", Parser.EQIND)
 ]
 
 let name =

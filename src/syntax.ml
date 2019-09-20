@@ -25,6 +25,7 @@ and expr' =
   | Eval of expr
   | Eq of expr * expr
   | Refl of expr
+  | EqInd of expr * (expr * (expr * (expr * expr)))
 
 (** Types (equal to expressions at this point). *)
 and ty = expr
@@ -111,6 +112,13 @@ and shift' n k = function
     Eq (e1, e2)
 
   | Refl e1 -> Refl (shift n k e1)
+
+  | EqInd (e1, (e2, (e3, (e4, e5)))) ->
+    let e1 = shift n k e1
+    and e2 = shift n k e2
+    and e3 = shift n k e3
+    and e4 = shift n k e4 in
+    EqInd (e1, (e2, (e3, (e4, e5))))
 
 and shift_ty n k t = shift n k t
 

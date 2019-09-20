@@ -140,6 +140,14 @@ let rec expr ctx {Location.data=e; Location.loc=loc} =
       let e1 = expr ctx e1 in
       Location.locate ~loc (Syntax.Refl e1)
 
+    | Input.EqInd (e1, (e2, (e3, (e4, e5)))) ->
+      let e1 = expr ctx e1
+      and e2 = expr ctx e2
+      and e3 = expr ctx e3
+      and e4 = expr ctx e4
+      and e5 = expr ctx e5 in
+      Location.locate ~loc (Syntax.EqInd (e1, (e2, (e3, (e4, e5)))))
+
 
 (** Desugar a type, which at this stage is the same as an expressions. *)
 and ty ctx t = expr ctx t

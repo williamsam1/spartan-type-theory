@@ -30,7 +30,7 @@ type expr =
   | Eval of expr (** evaluation of held application *)
   | Eq of expr * expr (** propositional equality *)
   | Refl of expr (** reflexivity *)
-
+  | EqInd of expr * (expr * (expr * (expr * expr))) (** equality induction *)
 
 (** Type *)
 and ty = Ty of expr
@@ -47,8 +47,11 @@ val ty_Nat : ty
 (** function type [a -> b] *)
 val ty_Fun : ty -> ty -> ty
 
-(** nested product type (x1 : A1) (x2 : A2) ... (xn : An) b *)
+(** nested product type [(x1 : A1) (x2 : A2) ... (xn : An) b] *)
 val ty_Prod : Name.ident -> ty -> (Name.ident * ty) list -> ty -> ty
+
+(** nested application [e1 e2 ... en] *)
+val multi_apply : expr -> expr list -> expr
 
 (** The name of an atom *)
 val atom_name : atom -> Name.ident
