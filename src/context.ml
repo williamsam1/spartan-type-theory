@@ -3,7 +3,7 @@
 (** Each entry in the context is bound to an atom and a type. *)
 type entry = TT.atom * TT.ty
 
-(** Each definitiona equality maps an atom to an expression. *)
+(** Each definitional equality maps an atom to an expression. *)
 type definition = TT.atom * TT.expr
 
 (** A typing context is a list of known identifiers and definitional equalities. *)

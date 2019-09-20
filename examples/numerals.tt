@@ -11,8 +11,9 @@ Definition natRec := (fun (A : Type) (a : A) (f : A -> A)
 	   => natInd (fun (_ : Nat) => A) a (fun (_ : Nat) => f))
 	   : forall (A : Type), A -> (A -> A) -> Nat -> A.
 
-
-Definition ( * ) := natRec (Nat -> Nat) (fun (_ : Nat) => Zero) (fun (f : Nat -> Nat) (n : Nat) => n + (f n))
+Definition ( * ) := natRec (Nat -> Nat)
+	(fun (_ : Nat) => Zero)
+	(fun (f : Nat -> Nat) (n : Nat) => n + (f n))
 	   : Nat -> Nat -> Nat.
 
 Definition one := suc Zero.

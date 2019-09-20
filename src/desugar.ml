@@ -131,6 +131,15 @@ let rec expr ctx {Location.data=e; Location.loc=loc} =
       let e1 = expr ctx e1 in
       Location.locate ~loc (Syntax.Eval e1)
 
+    | Input.Eq (e1, e2) ->
+      let e1 = expr ctx e1
+      and e2 = expr ctx e2 in
+      Location.locate ~loc (Syntax.Eq (e1, e2))
+
+    | Input.Refl e1 ->
+      let e1 = expr ctx e1 in
+      Location.locate ~loc (Syntax.Refl e1)
+
 
 (** Desugar a type, which at this stage is the same as an expressions. *)
 and ty ctx t = expr ctx t

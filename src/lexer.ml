@@ -24,7 +24,9 @@ let reserved = [
   ("Fmap", Parser.FMAP) ;
   ("LiftA", Parser.LIFTA) ;
   ("Bind", Parser.BIND) ;
-  ("AppEval", Parser.APPEVAL)
+  ("AppEval", Parser.APPEVAL) ;
+  ("Eq", Parser.EQ) ;
+  ("refl", Parser.REFL)
 ]
 
 let name =

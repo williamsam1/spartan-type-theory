@@ -1,0 +1,22 @@
+Definition suc := (fun (n : Nat) => Suc n)
+	   : Nat -> Nat.
+
+Definition ( + ) := (fun (m n : Nat) => Plus m n)
+	   : Nat -> Nat -> Nat.
+
+Definition one := suc Zero.
+Definition two_v1 := one + one.
+Definition two_v2 := suc one.
+Definition two_v1_eq_two_v2 := refl two_v1 : Eq two_v1 two_v2.
+
+(** Propositional equality for definition of addition *)
+
+(** Z + n == n *)
+Definition plus_Z := (fun (n : Nat) => refl n)
+	: forall (n : Nat), Eq (Zero + n) n.
+
+(** S m + n == S (m + n) *)
+Definition plus_S := (fun (m n : Nat) => refl (suc m + n))
+	: forall (m n : Nat), Eq (suc m + n) (suc (m + n)).
+Check plus_Z.
+Check plus_S.

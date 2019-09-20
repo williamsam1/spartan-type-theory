@@ -10,16 +10,7 @@ let rec eval_plus m n =
   match m with
   | TT.Zero -> n
   | TT.Suc m -> TT.Suc (eval_plus m n)
-  | TT.Atom x -> TT.Plus (m, n)
-  | _ -> assert false
-
-(** Normalize a natural number induction. *)
-let rec eval_nat_ind t a f n =
-  match n with
-  | TT.Zero -> a
-  | TT.Suc n -> TT.Apply (TT.Apply (f, n), eval_nat_ind t a f n)
-  | TT.Atom x -> TT.NatInd (t, (a, (f, n)))
-  | _ -> assert false
+  | _ -> TT.Plus (m, n)
 
 (** Normalize an expression. *)
 let rec norm_expr ~strategy ctx e =
@@ -70,9 +61,11 @@ let rec norm_expr ~strategy ctx e =
     eval_plus m n
 
   | TT.NatInd (t, (a, (f, n))) ->
-    let n = norm_expr ~strategy ctx n in
-    let e = eval_nat_ind t a f n in
-    norm_expr ~strategy ctx e
+    let t = norm_expr ~strategy ctx t
+    and a = norm_expr ~strategy ctx a
+    and f = norm_expr ~strategy ctx f
+    and n = norm_expr ~strategy ctx n in
+    eval_nat_ind ~strategy ctx t a f n
 
   | TT.App e1 ->
     let e1 = norm_expr ~strategy ctx e1 in
@@ -101,22 +94,35 @@ let rec norm_expr ~strategy ctx e =
     let e1 = norm_expr ~strategy ctx e1 in
     eval_eval ~strategy ctx e1
 
+  | TT.Eq (e1, e2) ->
+    let e1 = norm_expr ~strategy ctx e1
+    and e2 = norm_expr ~strategy ctx e2 in
+    TT.Eq (e1, e2)
+
+  | TT.Refl e1 ->
+    let e1 = norm_expr ~strategy ctx e1 in
+    TT.Refl e1
+
+(** Normalize a natural number induction. *)
+and eval_nat_ind ~strategy ctx t a f n =
+  match n with
+  | TT.Zero -> a
+  | TT.Suc n ->
+    let e = TT.Apply (TT.Apply (f, n), eval_nat_ind ~strategy ctx t a f n) in
+    norm_expr ~strategy ctx e
+  | _ -> TT.NatInd (t, (a, (f, n)))
+
 (** Normalize an evaluation of a held application. *)
 and eval_eval ~strategy ctx e =
   match e with
-  | TT.Ret e -> norm_expr ~strategy ctx e
+  | TT.Ret e -> e
   | TT.Fmap (e1, e2) ->
-    let e2 = eval_eval ~strategy ctx e2 in
-    norm_expr ~strategy ctx (TT.Apply (e1, e2))
+    norm_expr ~strategy ctx (TT.Apply (e1, TT.Eval e2))
   | TT.LiftA (e1, e2) ->
-    let e1 = eval_eval ~strategy ctx e1
-    and e2 = eval_eval ~strategy ctx e2 in
-    norm_expr ~strategy ctx (TT.Apply (e1, e2))
+    norm_expr ~strategy ctx (TT.Apply (TT.Eval e1, TT.Eval e2))
   | TT.Bind (e1, e2) ->
-    let e2 = eval_eval ~strategy ctx e2 in
-    eval_eval ~strategy ctx (norm_expr ~strategy ctx (TT.Apply (e1, e2)))
-  | TT.Atom x -> e
-  | _ -> assert false
+    norm_expr ~strategy ctx (TT.Eval (TT.Apply (e1, TT.Eval e2)))
+  | _ -> TT.Eval e
 
 (** Normalize a type *)
 let norm_ty ~strategy ctx (TT.Ty ty) =
@@ -136,6 +142,109 @@ let as_app ctx t =
   match t' with
   | TT.App t -> Some t
   | _ -> None
+
+(** [infer_TT ctx e] infers the type [ty] of expression [e]. *)
+let rec infer_TT ctx e =
+  match e with
+  | TT.Bound k ->
+     begin
+       match Context.lookup (TT.index_int k) ctx with
+       | None -> assert false
+       | Some (a, t) -> t
+     end
+
+  | TT.Atom a ->
+    begin
+       match Context.lookup_atom_ty a ctx with
+       | None -> assert false
+       | Some t -> t
+     end
+
+  | TT.Type -> TT.ty_Type
+
+  | TT.Prod _ -> TT.ty_Type
+
+  | TT.Lambda ((x, t), e) ->
+     let x' = TT.new_atom x in
+     let ctx  = Context.extend_ident x' t ctx in
+     let u = infer_TT ctx e in
+     let u = TT.abstract_ty x' u in
+     TT.Ty (TT.Prod ((x, t), u))
+
+  | TT.Apply (e1, e2) ->
+     let t1 = infer_TT ctx e1 in
+     begin
+       match as_prod ctx t1 with
+       | None -> assert false
+       | Some ((x, t), u) ->
+          TT.instantiate_ty e2 u
+     end
+
+  | TT.Nat -> TT.ty_Type
+
+  | TT.Zero -> TT.ty_Nat
+
+  | TT.Suc _ -> TT.ty_Nat
+
+  | TT.Plus _ -> TT.ty_Nat
+
+  | TT.NatInd (e1, (e2, (e3, e4))) ->
+    TT.Ty (TT.Apply (e1, e4))
+
+  | TT.App _ -> TT.ty_Type
+
+  | TT.Ret e1 ->
+    let TT.Ty t1 = infer_TT ctx e1 in
+    TT.Ty (TT.App t1)
+
+  | TT.Fmap (e1, e2) ->
+    let t1 = infer_TT ctx e1 in
+    begin
+      match as_prod ctx t1 with
+      | None -> assert false
+      | Some ((x, TT.Ty t), TT.Ty u) ->
+        TT.Ty (TT.App (TT.instantiate (TT.Eval e2) u))
+    end
+
+  | TT.LiftA (e1, e2) ->
+    let t1 = infer_TT ctx e1 in
+    begin
+      match as_app ctx t1 with
+      | None -> assert false
+      | Some t1 ->
+        begin
+          match as_prod ctx (TT.Ty t1) with
+          | None -> assert false
+          | Some ((x, TT.Ty t), TT.Ty u) ->
+              TT.Ty (TT.App (TT.instantiate (TT.Eval e2) u))
+        end
+    end
+
+  | TT.Bind (e1, e2) ->
+    let t1 = infer_TT ctx e1 in
+    begin
+      match as_prod ctx t1 with
+      | None -> assert false
+      | Some ((x, TT.Ty t), TT.Ty u) ->
+        begin
+          match u with
+          | TT.App u -> 
+            TT.Ty (TT.App (TT.instantiate (TT.Eval e2) u))
+          | _ -> assert false
+        end
+    end
+
+  | TT.Eval e1 ->
+    let t1 = infer_TT ctx e1 in
+    begin
+       match as_app ctx t1 with
+       | None -> assert false
+       | Some t1 -> TT.Ty t1
+     end
+
+  | TT.Eq _ -> TT.ty_Type
+
+  | TT.Refl e1 -> TT.Ty (TT.Eq (e1, e1))
 
 (** Compare expressions [e1] and [e2] at type [ty]? *)
 let rec expr ctx e1 e2 ty =
@@ -162,6 +271,7 @@ let rec expr ctx e1 e2 ty =
     | TT.NatInd _
     | TT.App _
     | TT.Eval _
+    | TT.Eq _
     | TT.Atom _ ->
       (* Type-directed phase is done, we compare normal forms. *)
       let e1 = norm_expr ~strategy:WHNF ctx e1
@@ -175,6 +285,7 @@ let rec expr ctx e1 e2 ty =
     | TT.Fmap _
     | TT.LiftA _
     | TT.Bind _
+    | TT.Refl _
     | TT.Lambda _ ->
       (* A type should never normalize to an abstraction *)
       assert false
@@ -215,7 +326,13 @@ and expr_whnf ctx e1 e2 =
   | TT.Bind (e11, e12), TT.Bind (e21, e22) ->
     expr_whnf ctx e11 e21 && expr_whnf ctx e12 e22
 
-  | TT.Eval e1, TT.Eval e2 -> expr_whnf ctx e1 e2
+  | TT.Eval e1, TT.Eval e2 ->
+    expr_whnf ctx e1 e2
+
+  | TT.Eq (e11, e12), TT.Eq (e21, e22) ->
+    expr_whnf ctx e11 e21 && expr_whnf ctx e12 e22
+
+  | TT.Refl e1, TT.Refl e2 -> expr_whnf ctx e1 e2
 
   | TT.Bound k1, TT.Bound k2 ->
     (* We should never be in a situation where we compare bound variables,
@@ -244,20 +361,16 @@ and expr_whnf ctx e1 e2 =
       match e1, e2 with
       | TT.Apply (e11, e12), TT.Apply (e21, e22) ->
         collect (e12 :: sp1) (e22 :: sp2) e11 e21
-      | TT.Atom a1, TT.Atom a2 ->
-        Some ((a1, sp1), (a2, sp2))
-      | _, _ -> None
+      | _, _ -> ((e1, sp1), (e2, sp2))
     in
     begin
-      match collect [e12] [e22] e11 e21 with
-      | None -> false
-      | Some ((a1, sp1), (a2, sp2)) -> spine ctx (a1, sp1) (a2, sp2)
+      let ((e1, sp1), (e2, sp2)) = collect [e12] [e22] e11 e21 in
+      spine ctx (e1, sp1) (e2, sp2)
     end
-
 
   | (TT.Type | TT.Nat | TT.Zero | TT.Suc _ | TT.Plus _ | TT.NatInd _ | TT.Bound _
     | TT.Atom _ | TT.Prod _ | TT.Lambda _ | TT.Apply _ | TT.App _ | TT.Ret _ | TT.Fmap _
-    | TT.LiftA _ | TT.Bind _ | TT.Eval _), _ ->
+    | TT.LiftA _ | TT.Bind _ | TT.Eval _ | TT.Eq _ | TT.Refl _), _ ->
     false
 
 (** Compare two types. *)
@@ -266,11 +379,10 @@ and ty ctx (TT.Ty ty1) (TT.Ty ty2) =
 
 (** Compare two spines of equal lengths.
 
-    A spine is a nested application of the form [a e1 e2 ... en]
-    where [a] is an atom.
+    A spine is a nested application of the form [e1 e2 ... en]
 *)
-and spine ctx (a1, sp1) (a2, sp2) =
-  a1 = a2 &&
+and spine ctx (e1, sp1) (e2, sp2) =
+  e1 = e2 &&
   begin
     let rec fold ty sp1 sp2 =
       match as_prod ctx ty with
@@ -290,7 +402,7 @@ and spine ctx (a1, sp1) (a2, sp2) =
             assert false
         end
     in
-    match Context.lookup_atom_ty a1 ctx with
-    | None -> assert false
-    | Some ty -> fold ty sp1 sp2
+    let ty = infer_TT ctx e1 in
+    fold ty sp1 sp2
   end
+

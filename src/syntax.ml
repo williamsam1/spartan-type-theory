@@ -23,6 +23,8 @@ and expr' =
   | LiftA of expr * expr
   | Bind of expr * expr
   | Eval of expr
+  | Eq of expr * expr
+  | Refl of expr
 
 (** Types (equal to expressions at this point). *)
 and ty = expr
@@ -102,6 +104,13 @@ and shift' n k = function
     Bind (e1, e2)
 
   | Eval e1 -> Eval (shift n k e1)
+
+  | Eq (e1, e2) ->
+    let e1 = shift n k e1
+    and e2 = shift n k e2 in
+    Eq (e1, e2)
+
+  | Refl e1 -> Refl (shift n k e1)
 
 and shift_ty n k t = shift n k t
 

@@ -177,6 +177,15 @@ let rec infer ctx {Location.data=e'; loc} =
        | Some t1 -> TT.Eval e1, TT.Ty t1
      end
 
+  | Syntax.Eq (e1, e2) ->
+    let e1, t1 = infer ctx e1 in
+    let e2 = check ctx e2 t1 in
+    TT.Eq (e1, e2), TT.ty_Type
+
+  | Syntax.Refl e1 ->
+    let e1, t1 = infer ctx e1 in
+    TT.Refl e1, TT.Ty (TT.Eq (e1, e1))
+
 (** [check ctx e ty] checks that [e] has type [ty] in context [ctx].
     It returns the processed expression [e]. *)
 and check ctx ({Location.data=e'; loc} as e) ty =
@@ -209,6 +218,8 @@ and check ctx ({Location.data=e'; loc} as e) ty =
   | Syntax.LiftA _
   | Syntax.Bind _
   | Syntax.Eval _
+  | Syntax.Eq _
+  | Syntax.Refl _
   | Syntax.Ascribe _ ->
      let e, ty' = infer ctx e in
      if Equal.ty ctx ty ty'
@@ -216,7 +227,6 @@ and check ctx ({Location.data=e'; loc} as e) ty =
        e
      else
        error ~loc (TypeExpected (ty, ty'))
-
 
 (** [check_ty ctx t] checks that [t] is a type in context [ctx]. It returns the processed
    type [t]. *)
@@ -271,3 +281,4 @@ and topfile ~quiet ctx lst =
        fold ctx lst
   in
   fold ctx lst
+

@@ -21,7 +21,8 @@ and expr' =
   | LiftA of expr * expr
   | Bind of expr * expr
   | Eval of expr
-   
+  | Eq of expr * expr
+  | Refl of expr
 
 (** Parsed type (equal to expression). *)
 and ty = expr

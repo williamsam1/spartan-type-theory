@@ -3,6 +3,9 @@
 (** De Bruijn index. *)
 type index = int
 
+(** Converts an index into an integer. *)
+let index_int i = i
+
 (** An atom is a primitive symbol. We tag atom names with integers so that
     it is easy to generate fresh ones. *)
 type atom = Name.ident * int
@@ -26,6 +29,8 @@ type expr =
   | LiftA of expr * expr (** liftA for App *)
   | Bind of expr * expr (** bind for App *)
   | Eval of expr (** evaluation of held application *)
+  | Eq of expr * expr (** propositional equality *)
+  | Refl of expr (** reflexivity *)
 
 (** Type *)
 and ty = Ty of expr
@@ -133,6 +138,15 @@ let rec instantiate ?(lvl=0) e e' =
     let e1 = instantiate ~lvl e e1 in
     Eval e1
 
+  | Eq (e1, e2) ->
+    let e1 = instantiate ~lvl e e1
+    and e2 = instantiate ~lvl e e2 in
+    Eq (e1, e2)
+
+  | Refl e1 ->
+    let e1 = instantiate ~lvl e e1 in
+    Refl e1
+
 
 (** [instantiate k e t] instantiates deBruijn index [k] with [e] in type [t]. *)
 and instantiate_ty ?(lvl=0) e (Ty t) =
@@ -199,16 +213,25 @@ let rec abstract ?(lvl=0) x e =
   | LiftA (e1, e2) ->
     let e1 = abstract ~lvl x e1
     and e2 = abstract ~lvl x e2 in
-    Fmap (e1, e2)
+    LiftA (e1, e2)
 
   | Bind (e1, e2) ->
     let e1 = abstract ~lvl x e1
     and e2 = abstract ~lvl x e2 in
-    Fmap (e1, e2)
+    Bind (e1, e2)
 
   | Eval e1 ->
     let e1 = abstract ~lvl x e1 in
     Eval e1
+
+  | Eq (e1, e2) ->
+    let e1 = abstract ~lvl x e1
+    and e2 = abstract ~lvl x e2 in
+    Eq (e1, e2)
+
+  | Refl e1 ->
+    let e1 = abstract ~lvl x e1 in
+    Refl e1
 
 (** [abstract_ty ~lvl x t] abstracts atom [x] into bound index [lvl] in type [t]. *)
 and abstract_ty ?(lvl=0) x (Ty t) =
@@ -241,6 +264,8 @@ let rec occurs k = function
   | LiftA (e1, e2) -> occurs k e1 || occurs k e2
   | Bind (e1, e2) -> occurs k e1 || occurs k e2
   | Eval e1 -> occurs k e1
+  | Eq (e1, e2) -> occurs k e1 || occurs k e2
+  | Refl e1 -> occurs k e1
 
 
 (** [occurs_ty k t] returns [true] when de Bruijn index [k] occurs in type [t]. *)
@@ -352,6 +377,15 @@ and print_expr' ~penv ?max_level e ppf =
       | Eval e1 ->
         Format.fprintf ppf "Eval(%t)"
         (print_expr ?max_level ~penv e1)
+
+      | Eq (e1, e2) ->
+        Format.fprintf ppf "Eq(%t,%t)"
+        (print_expr ?max_level ~penv e1)
+        (print_expr ?max_level ~penv e2)
+
+      | Refl e1 ->
+        Format.fprintf ppf "refl(%t)"
+        (print_expr ?max_level ~penv e1)
      
 
 and print_ty ?max_level ~penv (Ty t) ppf = print_expr ?max_level ~penv t ppf
@@ -454,3 +488,4 @@ and print_prod ?max_level ~penv ((x, u), t) ppf =
                                (print_ty ~max_level:Level.ascription)
                                (fun ~penv -> print_ty ~max_level:Level.in_binder ~penv t)
                                xus)
+
