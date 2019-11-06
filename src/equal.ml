@@ -332,9 +332,9 @@ and expr_whnf ctx e1 e2 =
     expr_whnf ctx e11 e21 && expr_whnf ctx e12 e22
 
   | TT.NatInd (e11, (e12, (e13, e14))), TT.NatInd (e21, (e22, (e23, e24))) ->
-    let e1 = expr_whnf ctx e11 e21
+    let e1 = expr ctx e11 e21 (infer_TT ctx e11)
     and e2 = expr_whnf ctx e12 e22
-    and e3 = expr_whnf ctx e13 e23
+    and e3 = expr ctx e13 e23 (infer_TT ctx e13)
     and e4 = expr_whnf ctx e14 e24 in
     e1 && e2 && e3 && e4
 
@@ -343,13 +343,13 @@ and expr_whnf ctx e1 e2 =
   | TT.Ret e1, TT.Ret e2 -> expr_whnf ctx e1 e2
 
   | TT.Fmap (e11, e12), TT.Fmap (e21, e22) ->
-    expr_whnf ctx e11 e21 && expr_whnf ctx e12 e22
+    expr ctx e11 e21 (infer_TT ctx e11) && expr_whnf ctx e12 e22
 
   | TT.LiftA (e11, e12), TT.LiftA (e21, e22) ->
     expr_whnf ctx e11 e21 && expr_whnf ctx e12 e22
 
   | TT.Bind (e11, e12), TT.Bind (e21, e22) ->
-    expr_whnf ctx e11 e21 && expr_whnf ctx e12 e22
+    expr ctx e11 e21 (infer_TT ctx e11) && expr_whnf ctx e12 e22
 
   | TT.Eval e1, TT.Eval e2 ->
     expr_whnf ctx e1 e2
@@ -358,11 +358,11 @@ and expr_whnf ctx e1 e2 =
     expr_whnf ctx e1 e2
 
   | TT.Eq (e11, e12), TT.Eq (e21, e22) ->
-    expr_whnf ctx e11 e21 && expr_whnf ctx e12 e22
+    expr ctx e11 e21 (infer_TT ctx e11) && expr ctx e12 e22 (infer_TT ctx e12)
 
   | TT.EqInd (e11, (e12, (e13, (e14, e15)))), TT.EqInd (e21, (e22, (e23, (e24, e25)))) ->
-    let e1 = expr_whnf ctx e11 e21
-    and e2 = expr_whnf ctx e12 e22
+    let e1 = expr ctx e11 e21 (infer_TT ctx e11)
+    and e2 = expr ctx e12 e22 (infer_TT ctx e12)
     and e3 = expr_whnf ctx e13 e23
     and e4 = expr_whnf ctx e14 e24
     and e5 = expr_whnf ctx e15 e25 in
