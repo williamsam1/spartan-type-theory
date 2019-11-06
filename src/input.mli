@@ -21,6 +21,7 @@ and expr' =
   | LiftA of expr * expr
   | Bind of expr * expr
   | Eval of expr
+  | Time of expr
   | Eq of expr * expr
   | Refl of expr
   | EqInd of expr * (expr * (expr * (expr * expr)))

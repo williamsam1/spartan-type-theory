@@ -25,6 +25,7 @@ let reserved = [
   ("LiftA", Parser.LIFTA) ;
   ("Bind", Parser.BIND) ;
   ("AppEval", Parser.APPEVAL) ;
+  ("Time", Parser.APPTIME) ;
   ("Eq", Parser.EQ) ;
   ("Refl", Parser.REFL) ;
   ("EqInd", Parser.EQIND)

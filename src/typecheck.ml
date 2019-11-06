@@ -177,6 +177,14 @@ let rec infer ctx {Location.data=e'; loc} =
        | Some t1 -> TT.Eval e1, TT.Ty t1
      end
 
+  | Syntax.Time e1 ->
+    let e1, t1 = infer ctx e1 in
+    begin
+       match Equal.as_app ctx t1 with
+       | None -> error ~loc (AppExpected t1)
+       | Some t1 -> TT.Time e1, TT.ty_Nat
+     end
+
   | Syntax.Eq (e1, e2) ->
     let e1, t1 = infer ctx e1 in
     let e2 = check ctx e2 t1 in
@@ -232,6 +240,7 @@ and check ctx ({Location.data=e'; loc} as e) ty =
   | Syntax.LiftA _
   | Syntax.Bind _
   | Syntax.Eval _
+  | Syntax.Time _
   | Syntax.Eq _
   | Syntax.Refl _
   | Syntax.EqInd _

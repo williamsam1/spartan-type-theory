@@ -94,6 +94,10 @@ let rec norm_expr ~strategy ctx e =
     let e1 = norm_expr ~strategy ctx e1 in
     eval_eval ~strategy ctx e1
 
+  | TT.Time e1 ->
+    let e1 = norm_expr ~strategy ctx e1 in
+    TT.Time e1
+
   | TT.Eq (e1, e2) ->
     let e1 = norm_expr ~strategy ctx e1
     and e2 = norm_expr ~strategy ctx e2 in
@@ -250,6 +254,14 @@ let rec infer_TT ctx e =
        | Some t1 -> TT.Ty t1
      end
 
+  | TT.Time e1 ->
+    let t1 = infer_TT ctx e1 in
+    begin
+       match as_app ctx t1 with
+       | None -> assert false
+       | Some t1 -> TT.ty_Nat
+     end
+
   | TT.Eq _ -> TT.ty_Type
 
   | TT.Refl e1 -> TT.Ty (TT.Eq (e1, e1))
@@ -282,6 +294,7 @@ let rec expr ctx e1 e2 ty =
     | TT.NatInd _
     | TT.App _
     | TT.Eval _
+    | TT.Time _
     | TT.Eq _
     | TT.EqInd _
     | TT.Atom _ ->
@@ -341,6 +354,9 @@ and expr_whnf ctx e1 e2 =
   | TT.Eval e1, TT.Eval e2 ->
     expr_whnf ctx e1 e2
 
+  | TT.Time e1, TT.Time e2 ->
+    expr_whnf ctx e1 e2
+
   | TT.Eq (e11, e12), TT.Eq (e21, e22) ->
     expr_whnf ctx e11 e21 && expr_whnf ctx e12 e22
 
@@ -390,7 +406,7 @@ and expr_whnf ctx e1 e2 =
 
   | (TT.Type | TT.Nat | TT.Zero | TT.Suc _ | TT.Plus _ | TT.NatInd _ | TT.Bound _
     | TT.Atom _ | TT.Prod _ | TT.Lambda _ | TT.Apply _ | TT.App _ | TT.Ret _ | TT.Fmap _
-    | TT.LiftA _ | TT.Bind _ | TT.Eval _ | TT.Eq _ | TT.Refl _ | TT.EqInd _), _ ->
+    | TT.LiftA _ | TT.Bind _ | TT.Eval _ | TT.Time _ | TT.Eq _ | TT.Refl _ | TT.EqInd _), _ ->
     false
 
 (** Compare two types. *)

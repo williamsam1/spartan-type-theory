@@ -29,6 +29,7 @@ type expr =
   | LiftA of expr * expr (** liftA for App *)
   | Bind of expr * expr (** bind for App *)
   | Eval of expr (** evaluation of held application *)
+  | Time of expr (** evaluation of runtime *)
   | Eq of expr * expr (** propositional equality *)
   | Refl of expr (** reflexivity *)
   | EqInd of expr * (expr * (expr * (expr * expr))) (** equality induction *)
@@ -144,6 +145,10 @@ let rec instantiate ?(lvl=0) e e' =
     let e1 = instantiate ~lvl e e1 in
     Eval e1
 
+  | Time e1 ->
+    let e1 = instantiate ~lvl e e1 in
+    Time e1
+
   | Eq (e1, e2) ->
     let e1 = instantiate ~lvl e e1
     and e2 = instantiate ~lvl e e2 in
@@ -238,6 +243,10 @@ let rec abstract ?(lvl=0) x e =
     let e1 = abstract ~lvl x e1 in
     Eval e1
 
+  | Time e1 ->
+    let e1 = abstract ~lvl x e1 in
+    Time e1
+
   | Eq (e1, e2) ->
     let e1 = abstract ~lvl x e1
     and e2 = abstract ~lvl x e2 in
@@ -286,6 +295,7 @@ let rec occurs k = function
   | LiftA (e1, e2) -> occurs k e1 || occurs k e2
   | Bind (e1, e2) -> occurs k e1 || occurs k e2
   | Eval e1 -> occurs k e1
+  | Time e1 -> occurs k e1
   | Eq (e1, e2) -> occurs k e1 || occurs k e2
   | Refl e1 -> occurs k e1
   | EqInd (e1, (e2, (e3, (e4, e5)))) ->
@@ -400,6 +410,10 @@ and print_expr' ~penv ?max_level e ppf =
 
       | Eval e1 ->
         Format.fprintf ppf "Eval(%t)"
+        (print_expr ?max_level ~penv e1)
+
+      | Time e1 ->
+        Format.fprintf ppf "Time(%t)"
         (print_expr ?max_level ~penv e1)
 
       | Eq (e1, e2) ->

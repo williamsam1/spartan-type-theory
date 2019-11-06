@@ -28,6 +28,7 @@ type expr =
   | LiftA of expr * expr (** liftA for App *)
   | Bind of expr * expr (** bind for App *)
   | Eval of expr (** evaluation of held application *)
+  | Time of expr (** evaluation of runtime *)
   | Eq of expr * expr (** propositional equality *)
   | Refl of expr (** reflexivity *)
   | EqInd of expr * (expr * (expr * (expr * expr))) (** equality induction *)

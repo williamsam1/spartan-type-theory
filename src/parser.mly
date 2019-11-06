@@ -28,6 +28,7 @@
 %token LIFTA
 %token BIND
 %token APPEVAL
+%token APPTIME
 %token EQ
 %token REFL
 %token EQIND
@@ -110,6 +111,7 @@ plain_app_term:
   | LIFTA e1=prefix_term e2=prefix_term  { Input.LiftA (e1, e2) }
   | BIND e1=prefix_term e2=prefix_term   { Input.Bind (e1, e2) }
   | APPEVAL e1=prefix_term               { Input.Eval e1 }
+  | APPTIME e1=prefix_term               { Input.Time e1 }
   | EQ e1=prefix_term e2=prefix_term     { Input.Eq (e1, e2) }
   | REFL e1=prefix_term               	 { Input.Refl e1 }
   | EQIND e1=prefix_term e2=prefix_term

@@ -23,6 +23,7 @@ and expr' =
   | LiftA of expr * expr
   | Bind of expr * expr
   | Eval of expr
+  | Time of expr
   | Eq of expr * expr
   | Refl of expr
   | EqInd of expr * (expr * (expr * (expr * expr)))
@@ -105,6 +106,8 @@ and shift' n k = function
     Bind (e1, e2)
 
   | Eval e1 -> Eval (shift n k e1)
+
+  | Time e1 -> Time (shift n k e1)
 
   | Eq (e1, e2) ->
     let e1 = shift n k e1

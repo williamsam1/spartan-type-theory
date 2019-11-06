@@ -131,6 +131,10 @@ let rec expr ctx {Location.data=e; Location.loc=loc} =
       let e1 = expr ctx e1 in
       Location.locate ~loc (Syntax.Eval e1)
 
+    | Input.Time e1 ->
+      let e1 = expr ctx e1 in
+      Location.locate ~loc (Syntax.Time e1)
+
     | Input.Eq (e1, e2) ->
       let e1 = expr ctx e1
       and e2 = expr ctx e2 in
