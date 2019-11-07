@@ -1,0 +1,87 @@
+Definition eq := (fun (A : Type) (x y : A) => Eq x y)
+    : Π (A : Type), A -> A -> Type.
+Definition refl := (fun (A : Type) (x : A) => Refl x)
+    : Π (A : Type) (x : A), eq A x x.
+Definition J := (fun (A : Type) (P : Π (x y : A), eq A x y -> Type)
+    (r : Π (x : A), P x x (refl A x))
+    (x y : A) (p : eq A x y) => EqInd P r x y p)
+    : Π (A : Type) (P : Π (x y : A), eq A x y -> Type),
+    (Π (x : A), P x x (refl A x))
+    -> Π (x y : A) (p : eq A x y), P x y p.
+Definition sym := (fun (A : Type) =>
+    J A (fun (x y : A) (p : Eq x y) => Eq y x)
+        (fun (x : A) => Refl x))
+    : Π (A : Type) (x y : A), Eq x y -> Eq y x.
+Definition trans := (fun (A : Type) (x y z : A) (p1 : Eq x y) (p2 : Eq y z) =>
+    J A (fun (x y : A) (p : Eq x y) => Π (z : A), Eq y z -> Eq x z)
+        (fun (x z : A) (p : Eq x z) => p)
+        x y p1 z p2)
+    : Π (A : Type) (x y z : A), Eq x y -> Eq y z -> Eq x z.
+Definition trans2 := (fun (A : Type) (x y z w : A)
+    (p1 : Eq x y) (p2 : Eq y z) (p3 : Eq z w) => trans A x z w (trans A x y z p1 p2) p3)
+    : Π (A : Type) (x y z w : A), Eq x y -> Eq y z -> Eq z w -> Eq x w.
+
+Definition Z := Zero : Nat.
+Definition suc := (fun (n : Nat) => Suc n)
+       : Nat -> Nat.
+Definition ( + ) := (fun (m n : Nat) => Plus m n)
+       : Nat -> Nat -> Nat.
+Definition nat_ind := (fun (P : Nat -> Type) (a : P Z)
+       (f : Π (n : Nat), P n -> P (Suc n)) (n : Nat) => NatInd P a f n).
+Definition nat_rec := (fun (A : Type) (a : A) (f : A -> A)
+       => nat_ind (fun (_ : Nat) => A) a (fun (_ : Nat) => f))
+       : Π (A : Type), A -> (A -> A) -> Nat -> A.
+Definition ( * ) := nat_rec (Nat -> Nat)
+    (fun (_ : Nat) => Z)
+    (fun (f : Nat -> Nat) (n : Nat) => n + (f n))
+       : Nat -> Nat -> Nat.
+
+(** x == y -> f x == f y *)
+Definition ap := (fun (A B : Type) (f : A -> B) =>
+    J A (fun (x y : A) (p : Eq x y) => Eq (f x) (f y)) (fun (x : A) => Refl (f x)))
+    : Π (A B : Type) (f : A -> B) (x y : A), Eq x y -> Eq (f x) (f y).
+
+(** x == y -> P x -> P y *)
+Definition tp := (fun (A : Type) (P : A -> Type) =>
+    J A (fun (x y : A) (p : Eq x y) => P x -> P y) (fun (x : A) (p : P x) => p))
+    : Π (A : Type) (P : A -> Type) (x y : A), Eq x y -> P x -> P y.
+
+(** n + 0 == n *)
+Definition z_id_r := (nat_ind (fun (n : Nat) => Eq (n + Z) n)
+    (Refl Z)
+    (fun (n : Nat) (p : Eq (n + Z) n) => ap Nat Nat suc (n + Z) n p))
+    : Π (n : Nat), Eq (n + Z) n.
+(**
+z_id_r : (n : Nat) n + 0 == n
+z_id_r 0 = Refl 0
+z_id_r (S n) = ap Nat Nat suc (n + 0) n (z_id_r n)
+*)
+
+(** m + n == n + m *)
+Definition plus_comm :=
+    (nat_ind (fun (m : Nat) => Π (n : Nat), Eq (m + n) (n + m))
+        (fun (n : Nat) => sym Nat (n + Z) n (z_id_r n))
+        (fun (m : Nat) (p : Π (n : Nat), Eq (m + n) (n + m)) =>
+            nat_ind (fun (n : Nat) => Eq (Suc(m) + n) (n + Suc(m)))
+                (ap Nat Nat suc (m + Z) m (z_id_r m))
+                (fun (n : Nat) (q : Eq (Suc(m) + n) (n + Suc(m))) => 
+                    ap Nat Nat suc (m + (Suc n)) (n + (Suc m))
+                    (trans2 Nat (m + (Suc n)) ((Suc n) + m) ((Suc m) + n) (n + (Suc m))
+                        (p (Suc n))
+                        (ap Nat Nat suc (n + m) (m + n) (sym Nat (m + n) (n + m) (p n)))
+                        q
+                    ))
+        )
+    )
+    : Π (m n : Nat), Eq (m + n) (n + m).
+
+(** f 0 == a -> f (S n) = S (f n) -> f n == n + a *)
+Definition linFunc := (fun (f : Nat -> Nat) (a : Nat) (f0 : Eq (f Z) a)
+    (fS : Π (n : Nat), Eq (f (Suc n)) (Suc (f n))) =>
+    nat_ind (fun (n : Nat) => Eq (f n) (n + a))
+    f0
+    (fun (n : Nat) (fn : Eq (f n) (n + a)) => tp Nat (fun (x : Nat) => Eq (f (Suc n)) (Suc x)) (f n) (n + a) fn (fS n)))
+    : Π (f : Nat -> Nat) (a : Nat),
+        Eq (f Z) a
+        -> (Π (n : Nat), Eq (f (Suc n)) (Suc (f n)))
+        -> Π (n : Nat), Eq (f n) (n + a).

@@ -302,9 +302,10 @@ and toplevel' ~quiet ctx = function
 
   | Syntax.TopEval e ->
      let e, ty = infer ctx e in
-     let e = Equal.norm_expr ~strategy:Equal.CBV ctx e in
-     Format.printf "@[<hov>%t@]@\n     : @[<hov>%t@]@."
+     let e' = Equal.norm_expr ~strategy:Equal.CBV ctx e in
+     Format.printf "@[<hov>%t@] => @[<hov>%t@]@\n     : @[<hov>%t@]@."
        (TT.print_expr ~penv:(Context.penv ctx) e)
+       (TT.print_expr ~penv:(Context.penv ctx) e')
        (TT.print_ty ~penv:(Context.penv ctx) ty) ;
      ctx
 

@@ -1,3 +1,34 @@
+(** Propositional equality *)
+Definition eq := (fun (A : Type) (x y : A) => Eq x y)
+    : forall (A : Type), A -> A -> Type.
+Definition refl := (fun (A : Type) (x : A) => Refl x)
+    : forall (A : Type) (x : A), eq A x x.
+Definition J := (fun (A : Type) (P : forall (x y : A), eq A x y -> Type)
+    (r : forall (x : A), P x x (refl A x))
+    (x y : A) (p : eq A x y) => EqInd P r x y p)
+    : forall (A : Type) (P : forall (x y : A), eq A x y -> Type),
+    (forall (x : A), P x x (refl A x))
+    -> forall (x y : A) (p : eq A x y), P x y p.
+Definition sym := (fun (A : Type) =>
+    J A (fun (x y : A) (p : Eq x y) => Eq y x)
+        (fun (x : A) => Refl x))
+    : forall (A : Type) (x y : A), Eq x y -> Eq y x.
+Definition trans := (fun (A : Type) (x y z : A) (p1 : Eq x y) (p2 : Eq y z) =>
+    J A (fun (x y : A) (p : Eq x y) => forall (z : A), Eq y z -> Eq x z)
+        (fun (x z : A) (p : Eq x z) => p)
+        x y p1 z p2)
+    : forall (A : Type) (x y z : A), Eq x y -> Eq y z -> Eq x z.
+
+(** x == y -> f x == f y *)
+Definition ap := (fun (A B : Type) (f : A -> B) =>
+    J A (fun (x y : A) (p : Eq x y) => Eq (f x) (f y)) (fun (x : A) => Refl (f x)))
+    : forall (A B : Type) (f : A -> B) (x y : A), Eq x y -> Eq (f x) (f y).
+
+(** x == y -> P x -> P y *)
+Definition tp := (fun (A : Type) (P : A -> Type) =>
+    J A (fun (x y : A) (p : Eq x y) => P x -> P y) (fun (x : A) (p : P x) => p))
+    : forall (A : Type) (P : A -> Type) (x y : A), Eq x y -> P x -> P y.
+
 Definition fmap := (fun (A : Type) (B : A -> Type)
     (f : forall (x : A), B x) (a : Comp A) => Fmap f a)
     : forall (A : Type) (B : A -> Type),
@@ -11,23 +42,63 @@ Definition ret := (fun (A : Type) (a : A) => Ret a)
 Definition eval := (fun (A : Type) (a : Comp A) => CompEval a)
 	: forall (A : Type), Comp A -> A.
 
+(** Initial testing *)
 Definition id := (fun (A : Type) (x : A) => x) : forall (A : Type), A -> A.
 
 Definition ret_id := Ret id : Comp (forall (A : Type), A -> A).
-Eval ret_id.
 
 Definition eval_ret_id := CompEval ret_id : forall (A : Type), A -> A.
-Eval eval_ret_id.
 
 Definition comp := (Fmap id (Ret Nat)) : Comp (Nat -> Nat).
-Check comp.
-Eval comp.
-Eval (CompEval comp).
 
 Definition time := (Time comp) : Comp Nat.
-Check time.
-Eval time.
 
 Definition evalTime := (CompEval time) : Nat.
-Check evalTime.
 Eval evalTime.
+
+Definition comp2 := (LiftA (Fmap id (Ret Nat)) (Ret Zero)) : Comp Nat.
+
+Definition time2 := (Time comp2) : Comp Nat.
+
+Definition evalTime2 := (CompEval time2) : Nat.
+Eval evalTime2.
+
+(** Testing on natural numbers *)
+Definition Z := Zero : Nat.
+Definition suc := (fun (n : Nat) => Suc n)
+       : Nat -> Nat.
+Definition ( + ) := (fun (m n : Nat) => Plus m n)
+       : Nat -> Nat -> Nat.
+Definition natInd := (fun (P : Nat -> Type) (a : P Z)
+       (f : forall (n : Nat), P n -> P (Suc n)) (n : Nat) => NatInd P a f n).
+Definition natRec := (fun (A : Type) (a : A) (f : A -> A)
+       => natInd (fun (_ : Nat) => A) a (fun (_ : Nat) => f))
+       : forall (A : Type), A -> (A -> A) -> Nat -> A.
+Definition ( * ) := natRec (Nat -> Nat)
+    (fun (_ : Nat) => Z)
+    (fun (f : Nat -> Nat) (n : Nat) => n + (f n))
+       : Nat -> Nat -> Nat.
+
+(** Successor function application is constant time *)
+Definition sucTime0 := (Refl (suc Z))
+    : Eq (CompEval (Time (Fmap suc (Ret Z)))) (suc Z).
+Definition sucTimeS := (fun (n : Nat) => (Refl (suc Z)))
+    : forall (n : Nat), Eq (CompEval (Time (Fmap suc (Ret (suc n))))) (suc Z).
+Definition sucTime := (fun (n : Nat) =>
+    natInd (fun (n : Nat) => Eq (CompEval (Time (Fmap suc (Ret n)))) (suc Z))
+    sucTime0
+    (fun (n : Nat) (_ : Eq (CompEval (Time (Fmap suc (Ret n)))) (suc Z)) => sucTimeS n)
+    n)
+    : forall (n : Nat), Eq (CompEval (Time (Fmap suc (Ret n)))) (suc Z).
+
+(** Successor function application is constant time *)
+Definition linFunc := (fun (f : Nat -> Nat) (a : Nat) (f0 : Eq (f Z) a)
+    (fS : forall (n : Nat), Eq (f (suc n)) (suc (f n))) =>
+    natInd (fun (n : Nat) => Eq (f n) (n + a))
+    f0
+    (fun (n : Nat) (fn : Eq (f n) (n + a)) => tp Nat (fun (x : Nat) => Eq (f (Suc n)) (Suc x)) (f n) (n + a) fn (fS n))
+    )
+    : forall (f : Nat -> Nat) (a : Nat),
+        Eq (f Z) a
+        -> (forall (n : Nat), Eq (f (suc n)) (suc (f n)))
+        -> forall (n : Nat), Eq (f n) (n + a).
