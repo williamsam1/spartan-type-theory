@@ -23,7 +23,7 @@ let reserved = [
   ("Ret", Parser.RET) ;
   ("Fmap", Parser.FMAP) ;
   ("LiftA", Parser.LIFTA) ;
-  ("AppEval", Parser.COMPEVAL) ;
+  ("CompEval", Parser.COMPEVAL) ;
   ("Time", Parser.COMPTIME) ;
   ("Eq", Parser.EQ) ;
   ("Refl", Parser.REFL) ;

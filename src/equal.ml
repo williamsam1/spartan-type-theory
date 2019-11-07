@@ -5,6 +5,12 @@ type strategy =
   | WHNF (** normalize to weak head-normal form *)
   | CBV (** call-by-value normalization *)
 
+let rec collect_spine sp e =
+  match e with
+  | TT.Apply (e1, e2) ->
+    collect_spine (e2 :: sp) e1
+  | _ -> (e, sp)
+
 (** Normalize an addition. *)
 let rec eval_plus m n =
   match m with
@@ -118,7 +124,7 @@ let rec norm_expr ~strategy ctx e =
 
   | TT.Time e1 ->
     let e1 = norm_expr ~strategy ctx e1 in
-    TT.Time e1
+    time_eval ~strategy ctx e1
 
   | TT.Eq (e1, e2) ->
     let e1 = norm_expr ~strategy ctx e1
@@ -178,8 +184,117 @@ and eval_eval ~strategy ctx e =
   | TT.LiftA (e1, e2) ->
     norm_expr ~strategy ctx (TT.Apply (TT.Eval e1, TT.Eval e2))
   | TT.TimePlus (e1, e2) ->
-    norm_expr ~strategy ctx (TT.Plus (e1, e2))
+    norm_expr ~strategy ctx (TT.Plus (TT.Eval e1, TT.Eval e2))
   | _ -> TT.Eval e
+
+and time_spine e1 sp =
+  begin
+    match sp with
+    | [] -> TT.Ret TT.Zero
+    | e2 :: sp -> time_spine_impl (TT.Fmap (e1, TT.Ret e2)) sp
+  end
+
+and time_spine_impl e sp =
+  begin
+    match sp with
+    | [] -> e
+    | e2 :: sp -> time_spine_impl (TT.LiftA (e, TT.Ret e2)) sp
+  end
+
+(** Runtime of a syntactic expression. *)
+and time_expr ctx e = 
+  match e with
+  | TT.Bound k -> TT.Ret TT.Zero
+
+  | TT.Type -> TT.Ret TT.Zero
+
+  | TT.Atom x ->
+    begin
+      match Context.lookup_def x ctx with
+      | None -> TT.Ret TT.Zero
+      | Some e -> assert false
+    end
+
+  | TT.Prod _ -> TT.Ret TT.Zero
+
+  | TT.Lambda _ -> TT.Ret TT.Zero
+
+  | TT.Apply (e1, e2) ->
+    begin
+      match e1 with
+      | TT.Lambda (_, e') ->
+        let e' = TT.instantiate e2 e' in
+        TT.TimePlus (TT.Ret (TT.Suc TT.Zero), time_expr ctx e')
+      | _ ->
+        let (e, sp) = collect_spine [e2] e1 in
+        TT.Time (time_spine e sp)
+    end
+
+  | TT.Nat -> TT.Ret TT.Zero
+
+  | TT.Zero -> TT.Ret TT.Zero
+
+  | TT.Suc e -> TT.Ret TT.Zero
+
+  | TT.Plus (e1, e2) -> TT.Ret e1
+
+  | TT.TimePlus (e1, e2) ->
+    let e1 = time_expr ctx e1
+    and e2 = time_expr ctx e2
+    and e3 = TT.Ret (TT.Eval e1) in
+    TT.TimePlus (e1, TT.TimePlus (e2, e3))
+
+  | TT.NatInd (t, (a, (f, n))) -> TT.TimeNatInd (TT.Zero, (t, (a, (f, n))))
+
+  | TT.TimeNatInd (k, (t, (a, (f, n)))) -> TT.TimeNatInd (TT.Suc k, (t, (a, (f, n))))
+
+  | TT.Comp e1 -> TT.Ret TT.Zero
+
+  | TT.Ret e1 -> TT.Ret TT.Zero
+
+  | TT.Fmap (e1, e2) -> TT.Ret TT.Zero
+
+  | TT.LiftA (e1, e2) -> TT.Ret TT.Zero
+
+  | TT.Eval e1 -> TT.Ret TT.Zero
+
+  | TT.Time e1 -> TT.Ret TT.Zero
+
+  | TT.Eq (e1, e2) -> TT.Ret TT.Zero
+
+  | TT.Refl e1 -> TT.Ret TT.Zero
+
+  | TT.EqInd (a, (r, (e1, (e2, p)))) -> TT.TimeEqInd (TT.Zero, (a, (r, (e1, (e2, p)))))
+
+  | TT.TimeEqInd (k, (a, (r, (e1, (e2, p))))) -> TT.TimeEqInd (TT.Suc k, (a, (r, (e1, (e2, p)))))
+
+(** Normalize the runtime of a computation. *)
+and time_eval ~strategy ctx e =
+  match e with
+  | TT.Ret e -> TT.Ret TT.Zero
+  | TT.Fmap (e1, e2) ->
+    let t1 = TT.Time e2
+    and e2 = norm_expr ~strategy ctx (TT.Eval e2) in
+    let e = TT.Apply (e1, e2) in
+    let t2 = time_expr ctx e in
+    let t = TT.TimePlus (t1, t2) in
+    norm_expr ~strategy ctx t
+  | TT.LiftA (e1, e2) ->
+    let t1 = TT.Time e1
+    and e1 = norm_expr ~strategy ctx (TT.Eval e1)
+    and t2 = TT.Time e2
+    and e2 = norm_expr ~strategy ctx (TT.Eval e2) in
+    let e = TT.Apply (e1, e2) in
+    let t3 = time_expr ctx e in
+    let t = TT.TimePlus (TT.TimePlus (t1, t2), t3) in
+    norm_expr ~strategy ctx t
+  | TT.TimePlus (e1, e2) ->
+    let t1 = TT.Time e1
+    and t2 = TT.Time e2
+    and t3 = TT.Ret (TT.Eval e1) in
+    let t = TT.TimePlus (t1, TT.TimePlus (t2, t3)) in
+    norm_expr ~strategy ctx t
+  | _ -> TT.Time e
 
 (** Normalize a type *)
 let norm_ty ~strategy ctx (TT.Ty ty) =

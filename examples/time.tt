@@ -19,23 +19,15 @@ Eval ret_id.
 Definition eval_ret_id := CompEval ret_id : forall (A : Type), A -> A.
 Eval eval_ret_id.
 
-(** Propositional equality for evaluation of held Complications *)
+Definition comp := (Fmap id (Ret Nat)) : Comp (Nat -> Nat).
+Check comp.
+Eval comp.
+Eval (CompEval comp).
 
-(** eval (ret a) = a *)
-Definition eval_ret := (fun (A : Type) (a : A) => Refl a)
-	: forall (A : Type) (a : A), Eq (CompEval (Ret a)) a.
-Check eval_ret.
+Definition time := (Time comp) : Comp Nat.
+Check time.
+Eval time.
 
-(** eval (fmap f a) = f (eval a) *)
-Definition eval_fmap := (fun (A : Type) (B : A -> Type)
-	(f : forall (x : A), B x) (a : Comp A) => Refl (f (CompEval a)))
-	: forall (A : Type) (B : A -> Type) (f : forall (x : A), B x) (a : Comp A),
-		Eq (CompEval (Fmap f a)) (f (CompEval a)).
-Check eval_fmap.
-
-(** eval (liftA f a) = (eval f) (eval a) *)
-Definition eval_liftA := (fun (A : Type) (B : A -> Type)
-	(f : Comp (forall (x : A), B x)) (a : Comp A) => Refl ((CompEval f) (CompEval a)))
-	: forall (A : Type) (B : A -> Type) (f : Comp (forall (x : A), B x)) (a : Comp A),
-		Eq (CompEval (LiftA f a)) ((CompEval f) (CompEval a)).
-Check eval_liftA.
+Definition evalTime := (CompEval time) : Nat.
+Check evalTime.
+Eval evalTime.
