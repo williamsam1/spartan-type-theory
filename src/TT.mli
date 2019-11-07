@@ -16,22 +16,24 @@ type expr =
   | Type (** the type of types *)
   | Prod of (Name.ident * ty) * ty (** dependent product *)
   | Lambda of (Name.ident * ty) * expr (** lambda abstraction *)
-  | Apply of expr * expr (** application *)
+  | Apply of expr * expr (** Complication *)
   | Nat (** natural number type *)
   | Zero (** first natural number *)
   | Suc of expr (** successor natural numbers *)
   | Plus of expr * expr (** primitive addition *)
+  | TimePlus of expr * expr (** timing function for primitive addition *)
   | NatInd of expr * (expr * (expr * expr)) (** natural number induction *)
-  | App of expr (** held application *)
-  | Ret of expr (** return/pure for App *)
-  | Fmap of expr * expr (** fmap for App *)
-  | LiftA of expr * expr (** liftA for App *)
-  | Bind of expr * expr (** bind for App *)
-  | Eval of expr (** evaluation of held application *)
-  | Time of expr (** evaluation of runtime *)
+  | TimeNatInd of expr * (expr * (expr * (expr * expr))) (** timing function for natural number induction *)
+  | Comp of expr (** computation *)
+  | Ret of expr (** return/pure for Comp *)
+  | Fmap of expr * expr (** fmap for Comp *)
+  | LiftA of expr * expr (** liftA for Comp *)
+  | Eval of expr (** evaluation of computation *)
+  | Time of expr (** runtime of computation *)
   | Eq of expr * expr (** propositional equality *)
   | Refl of expr (** reflexivity *)
   | EqInd of expr * (expr * (expr * (expr * expr))) (** equality induction *)
+  | TimeEqInd of expr * (expr * (expr * (expr * (expr * expr)))) (** timing function for equality induction *)
 
 (** Type *)
 and ty = Ty of expr
@@ -51,7 +53,7 @@ val ty_Fun : ty -> ty -> ty
 (** nested product type [(x1 : A1) (x2 : A2) ... (xn : An) b] *)
 val ty_Prod : Name.ident -> ty -> (Name.ident * ty) list -> ty -> ty
 
-(** nested application [e1 e2 ... en] *)
+(** nested Complication [e1 e2 ... en] *)
 val multi_apply : expr -> expr list -> expr
 
 (** The name of an atom *)

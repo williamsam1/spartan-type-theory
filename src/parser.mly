@@ -22,13 +22,12 @@
 %token SUC
 %token PLUS
 %token NATIND
-%token APP
+%token COMP
 %token RET
 %token FMAP
 %token LIFTA
-%token BIND
-%token APPEVAL
-%token APPTIME
+%token COMPEVAL
+%token COMPTIME
 %token EQ
 %token REFL
 %token EQIND
@@ -89,7 +88,7 @@ plain_term:
 
 infix_term: mark_location(plain_infix_term) { $1 }
 plain_infix_term:
-  | e=plain_app_term { e }
+  | e=plain_COMP_term { e }
   | e2=infix_term oploc=infix e3=infix_term
     { let {Location.data=op; loc} = oploc in
       let op = Location.locate ~loc (Input.Var op) in
@@ -97,26 +96,25 @@ plain_infix_term:
       Input.Apply (e1, e3)
     }
 
-app_term: mark_location(plain_app_term) { $1 }
-plain_app_term:
-  | e=plain_prefix_term                  { e }
-  | e1=app_term e2=prefix_term           { Input.Apply (e1, e2) }
-  | SUC e=prefix_term                    { Input.Suc e }
-  | PLUS e1=prefix_term e2=prefix_term   { Input.Plus (e1, e2) }
+COMP_term: mark_location(plain_COMP_term) { $1 }
+plain_COMP_term:
+  | e=plain_prefix_term                   { e }
+  | e1=COMP_term e2=prefix_term           { Input.Apply (e1, e2) }
+  | SUC e=prefix_term                     { Input.Suc e }
+  | PLUS e1=prefix_term e2=prefix_term    { Input.Plus (e1, e2) }
   | NATIND e1=prefix_term e2=prefix_term
-    	e3=prefix_term e4=prefix_term    { Input.NatInd (e1, (e2, (e3, e4))) }
-  | APP e1=prefix_term                   { Input.App e1 }
-  | RET e1=prefix_term                   { Input.Ret e1 }
-  | FMAP e1=prefix_term e2=prefix_term   { Input.Fmap (e1, e2) }
-  | LIFTA e1=prefix_term e2=prefix_term  { Input.LiftA (e1, e2) }
-  | BIND e1=prefix_term e2=prefix_term   { Input.Bind (e1, e2) }
-  | APPEVAL e1=prefix_term               { Input.Eval e1 }
-  | APPTIME e1=prefix_term               { Input.Time e1 }
-  | EQ e1=prefix_term e2=prefix_term     { Input.Eq (e1, e2) }
-  | REFL e1=prefix_term               	 { Input.Refl e1 }
+    	e3=prefix_term e4=prefix_term       { Input.NatInd (e1, (e2, (e3, e4))) }
+  | COMP e1=prefix_term                   { Input.Comp e1 }
+  | RET e1=prefix_term                    { Input.Ret e1 }
+  | FMAP e1=prefix_term e2=prefix_term    { Input.Fmap (e1, e2) }
+  | LIFTA e1=prefix_term e2=prefix_term   { Input.LiftA (e1, e2) }
+  | COMPEVAL e1=prefix_term               { Input.Eval e1 }
+  | COMPTIME e1=prefix_term               { Input.Time e1 }
+  | EQ e1=prefix_term e2=prefix_term      { Input.Eq (e1, e2) }
+  | REFL e1=prefix_term               	  { Input.Refl e1 }
   | EQIND e1=prefix_term e2=prefix_term
       e3=prefix_term e4=prefix_term
-      e5=prefix_term                     { Input.EqInd (e1, (e2, (e3, (e4, e5)))) }
+      e5=prefix_term                      { Input.EqInd (e1, (e2, (e3, (e4, e5)))) }
 
 prefix_term: mark_location(plain_prefix_term) { $1 }
 plain_prefix_term:

@@ -15,11 +15,10 @@ and expr' =
   | Suc of expr
   | Plus of expr * expr
   | NatInd of expr * (expr * (expr * expr))
-  | App of expr
+  | Comp of expr
   | Ret of expr
   | Fmap of expr * expr
   | LiftA of expr * expr
-  | Bind of expr * expr
   | Eval of expr
   | Time of expr
   | Eq of expr * expr

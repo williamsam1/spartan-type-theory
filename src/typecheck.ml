@@ -101,9 +101,14 @@ let rec infer ctx {Location.data=e'; loc} =
     TT.Suc e, TT.ty_Nat
 
   | Syntax.Plus (e1, e2) ->
-    let e1 = check ctx e1 TT.ty_Nat in
-    let e2 = check ctx e2 TT.ty_Nat in
+    let e1 = check ctx e1 TT.ty_Nat
+    and e2 = check ctx e2 TT.ty_Nat in
     TT.Plus (e1, e2), TT.ty_Nat
+
+  | Syntax.TimePlus (e1, e2) ->
+    let e1 = check ctx e1 (TT.Ty (TT.Comp TT.Nat))
+    and e2 = check ctx e2 (TT.Ty (TT.Comp TT.Nat)) in
+    TT.TimePlus (e1, e2), TT.Ty (TT.Comp TT.Nat)
 
   | Syntax.NatInd (e1, (e2, (e3, e4))) ->
     let e1 = check ctx e1 (TT.ty_Fun TT.ty_Nat TT.ty_Type) in
@@ -115,16 +120,28 @@ let rec infer ctx {Location.data=e'; loc} =
     let t = TT.ty_Prod var_n TT.ty_Nat [(x, TT.Ty (TT.Apply (e1, nat_n)))] (TT.Ty (TT.Apply (e1, TT.Suc nat_n2))) in
     let e3 = check ctx e3 t
     and e4 = check ctx e4 TT.ty_Nat in
-    TT.NatInd (e1, (e2, (e3, e4))),
-    TT.Ty (TT.Apply (e1, e4))
+    TT.NatInd (e1, (e2, (e3, e4))), TT.Ty (TT.Apply (e1, e4))
+
+  | Syntax.TimeNatInd (k, (e1, (e2, (e3, e4)))) ->
+    let e1 = check ctx e1 (TT.ty_Fun TT.ty_Nat TT.ty_Type) in
+    let e2 = check ctx e2 (TT.Ty (TT.Apply (e1, TT.Zero))) in
+    let var_n = Name.Ident ("n", Name.Word)
+    and x = Name.anonymous ()
+    and nat_n = TT.index_expr 0
+    and nat_n2 = TT.index_expr 1 in
+    let t = TT.ty_Prod var_n TT.ty_Nat [(x, TT.Ty (TT.Apply (e1, nat_n)))] (TT.Ty (TT.Apply (e1, TT.Suc nat_n2))) in
+    let e3 = check ctx e3 t
+    and e4 = check ctx e4 TT.ty_Nat
+    and k = check ctx k TT.ty_Nat in
+    TT.TimeNatInd (k, (e1, (e2, (e3, e4)))), TT.Ty (TT.Comp TT.Nat)
 
   | Syntax.App e1 ->
     let e1 = check ctx e1 TT.ty_Type in
-    TT.App e1, TT.ty_Type
+    TT.Comp e1, TT.ty_Type
 
   | Syntax.Ret e1 ->
     let e1, TT.Ty t1 = infer ctx e1 in
-    TT.Ret e1, TT.Ty (TT.App t1)
+    TT.Ret e1, TT.Ty (TT.Comp t1)
 
   | Syntax.Fmap (e1, e2) ->
     let e1, t1 = infer ctx e1 in
@@ -132,9 +149,9 @@ let rec infer ctx {Location.data=e'; loc} =
       match Equal.as_prod ctx t1 with
       | None -> error ~loc (FunctionExpected t1)
       | Some ((x, TT.Ty t), TT.Ty u) ->
-        let e2 = check ctx e2 (TT.Ty (TT.App t)) in
+        let e2 = check ctx e2 (TT.Ty (TT.Comp t)) in
           TT.Fmap (e1, e2),
-          TT.Ty (TT.App (TT.instantiate (TT.Eval e2) u))
+          TT.Ty (TT.Comp (TT.instantiate (TT.Eval e2) u))
     end
 
   | Syntax.LiftA (e1, e2) ->
@@ -147,25 +164,9 @@ let rec infer ctx {Location.data=e'; loc} =
           match Equal.as_prod ctx (TT.Ty t1) with
           | None -> error ~loc (FunctionExpected (TT.Ty t1))
           | Some ((x, TT.Ty t), TT.Ty u) ->
-            let e2 = check ctx e2 (TT.Ty (TT.App t)) in
+            let e2 = check ctx e2 (TT.Ty (TT.Comp t)) in
               TT.LiftA (e1, e2),
-              TT.Ty (TT.App (TT.instantiate (TT.Eval e2) u))
-        end
-    end
-
-  | Syntax.Bind (e1, e2) ->
-    let e1, t1 = infer ctx e1 in
-    begin
-      match Equal.as_prod ctx t1 with
-      | None -> error ~loc (FunctionExpected t1)
-      | Some ((x, TT.Ty t), TT.Ty u) ->
-        begin
-          match u with
-          | TT.App u -> 
-            let e2 = check ctx e2 (TT.Ty (TT.App t)) in
-              TT.Bind (e1, e2),
-              TT.Ty (TT.App (TT.instantiate (TT.Eval e2) u))
-          | _ -> error ~loc (AppExpected (TT.Ty u))
+              TT.Ty (TT.Comp (TT.instantiate (TT.Eval e2) u))
         end
     end
 
@@ -182,7 +183,7 @@ let rec infer ctx {Location.data=e'; loc} =
     begin
        match Equal.as_app ctx t1 with
        | None -> error ~loc (AppExpected t1)
-       | Some t1 -> TT.Time e1, TT.ty_Nat
+       | Some t1 -> TT.Time e1, TT.Ty (TT.Comp TT.Nat)
      end
 
   | Syntax.Eq (e1, e2) ->
@@ -207,6 +208,21 @@ let rec infer ctx {Location.data=e'; loc} =
     let e2 = check ctx e2 t2
     and e5 = check ctx e5 (TT.Ty (TT.Eq (e3, e4))) in
     TT.EqInd (e1, (e2, (e3, (e4, e5)))), TT.Ty (TT.multi_apply e1 [ e3 ; e4 ; e5 ])
+
+  | Syntax.TimeEqInd (k, (e1, (e2, (e3, (e4, e5))))) ->
+    let e3, a = infer ctx e3 in
+    let e4 = check ctx e4 a in
+    let x = Name.Ident ("x", Name.Word)
+    and y = Name.Ident ("y", Name.Word)
+    and i0 = TT.index_expr 0
+    and i1 = TT.index_expr 1 in
+    let t1 = TT.ty_Prod x a [(y, a)] (TT.ty_Fun (TT.Ty (TT.Eq (i1, i0))) TT.ty_Type) in
+    let e1 = check ctx e1 t1 in
+    let t2 = TT.ty_Prod x a [] (TT.Ty (TT.multi_apply e1 [ i0 ; i0 ; (TT.Refl i0) ])) in
+    let e2 = check ctx e2 t2
+    and e5 = check ctx e5 (TT.Ty (TT.Eq (e3, e4)))
+    and k = check ctx k TT.ty_Nat in
+    TT.TimeEqInd (k, (e1, (e2, (e3, (e4, e5))))), TT.Ty (TT.Comp TT.Nat)
 
 (** [check ctx e ty] checks that [e] has type [ty] in context [ctx].
     It returns the processed expression [e]. *)
@@ -233,17 +249,19 @@ and check ctx ({Location.data=e'; loc} as e) ty =
   | Syntax.Zero
   | Syntax.Suc _
   | Syntax.Plus _
+  | Syntax.TimePlus _
   | Syntax.NatInd _
+  | Syntax.TimeNatInd _
   | Syntax.App _
   | Syntax.Ret _
   | Syntax.Fmap _
   | Syntax.LiftA _
-  | Syntax.Bind _
   | Syntax.Eval _
   | Syntax.Time _
   | Syntax.Eq _
   | Syntax.Refl _
   | Syntax.EqInd _
+  | Syntax.TimeEqInd _
   | Syntax.Ascribe _ ->
      let e, ty' = infer ctx e in
      if Equal.ty ctx ty ty'

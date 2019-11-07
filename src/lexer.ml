@@ -19,13 +19,12 @@ let reserved = [
   ("Suc", Parser.SUC) ;
   ("Plus", Parser.PLUS) ;
   ("NatInd", Parser.NATIND) ;
-  ("App", Parser.APP) ;
+  ("Comp", Parser.COMP) ;
   ("Ret", Parser.RET) ;
   ("Fmap", Parser.FMAP) ;
   ("LiftA", Parser.LIFTA) ;
-  ("Bind", Parser.BIND) ;
-  ("AppEval", Parser.APPEVAL) ;
-  ("Time", Parser.APPTIME) ;
+  ("AppEval", Parser.COMPEVAL) ;
+  ("Time", Parser.COMPTIME) ;
   ("Eq", Parser.EQ) ;
   ("Refl", Parser.REFL) ;
   ("EqInd", Parser.EQIND)
