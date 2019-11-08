@@ -1,26 +1,26 @@
-Definition suc := (fun (n : Nat) => Suc n)
-	   : Nat -> Nat.
-
+Definition Z := Zero : Nat.
+Definition S := (fun (n : Nat) => Suc n)
+       : Nat -> Nat.
 Definition ( + ) := (fun (m n : Nat) => Plus m n)
-	   : Nat -> Nat -> Nat.
+       : Nat -> Nat -> Nat.
+Definition nat_ind := (fun (P : Nat -> Type) (a : P Z)
+       (f : Π (n : Nat), P n -> P (Suc n)) (n : Nat) => NatInd P a f n).
+Definition nat_rec := (fun (A : Type) (a : A) (f : A -> A)
+       => nat_ind (fun (_ : Nat) => A) a (fun (_ : Nat) => f))
+       : Π (A : Type), A -> (A -> A) -> Nat -> A.
+Definition nat_rec2 := (fun (A : Type) (a : A) (f : Nat -> A -> A)
+       => nat_ind (fun (_ : Nat) => A) a (f))
+       : Π (A : Type), A -> (Nat -> A -> A) -> Nat -> A.
+Definition ( * ) := nat_rec (Nat -> Nat)
+    (fun (_ : Nat) => Z)
+    (fun (f : Nat -> Nat) (n : Nat) => n + (f n))
+       : Nat -> Nat -> Nat.
 
-Definition natInd := (fun (P : Nat -> Type) (a : P Zero)
-	   (f : forall (n : Nat), P n -> P (Suc n)) (n : Nat) => NatInd P a f n).
-
-Definition natRec := (fun (A : Type) (a : A) (f : A -> A)
-	   => natInd (fun (_ : Nat) => A) a (fun (_ : Nat) => f))
-	   : forall (A : Type), A -> (A -> A) -> Nat -> A.
-
-Definition ( * ) := natRec (Nat -> Nat)
-	(fun (_ : Nat) => Zero)
-	(fun (f : Nat -> Nat) (n : Nat) => n + (f n))
-	   : Nat -> Nat -> Nat.
-
-Definition one := suc Zero.
-Definition two := suc one.
+Definition one := S Zero.
+Definition two := S one.
 Definition three := one + two.
 Definition five := two + three.
+Definition six := two * three.
 Definition ten := five + five.
 Definition hundred := ten * ten.
 Definition thousand := hundred * ten.
-Eval thousand.
