@@ -24,6 +24,7 @@ type expr =
   | Plus of expr * expr (** primitive addition *)
   | TimePlus of expr * expr (** timing function for primitive addition *)
   | NatInd of expr * (expr * (expr * expr)) (** natural number induction *)
+  | TimeNatInd of expr * (expr * (expr * (expr * expr))) (** timing function for natural number induction *)
   | Comp of expr (** computation *)
   | Ret of expr (** return/pure for Comp *)
   | Fmap of expr * expr (** fmap for Comp *)
@@ -33,6 +34,8 @@ type expr =
   | Eq of expr * expr (** propositional equality *)
   | Refl of expr (** reflexivity *)
   | EqInd of expr * (expr * (expr * (expr * expr))) (** equality induction *)
+  | TimeEqInd of expr * (expr * (expr * (expr * (expr * expr)))) (** timing function for equality induction *)
+
 
 (** Type *)
 and ty = Ty of expr
@@ -72,7 +75,7 @@ let rec multi_apply e1 es =
   | [] -> e1
   | (e2 :: es) -> multi_apply (Apply (e1, e2)) es
 
-(** nested addition runtime [e1 (+) e2 (+) ... (+) en *)
+(** nested time plus [e1 (+) e2 (+) ... (+) en] *)
 let rec multi_time_plus e1 es = 
   match es with
   | [] -> e1
@@ -129,6 +132,14 @@ let rec instantiate ?(lvl=0) e e' =
     and e4 = instantiate ~lvl e e4 in
     NatInd (e1, (e2, (e3, e4)))
 
+  | TimeNatInd (e1, (e2, (e3, (e4, e5)))) ->
+    let e1 = instantiate ~lvl e e1
+    and e2 = instantiate ~lvl e e2
+    and e3 = instantiate ~lvl e e3
+    and e4 = instantiate ~lvl e e4 
+    and e5 = instantiate ~lvl e e5 in
+    TimeNatInd (e1, (e2, (e3, (e4, e5))))
+
   | Comp e1 ->
     let e1 = instantiate ~lvl e e1 in
     Comp e1
@@ -171,6 +182,15 @@ let rec instantiate ?(lvl=0) e e' =
     and e4 = instantiate ~lvl e e4
     and e5 = instantiate ~lvl e e5 in
     EqInd (e1, (e2, (e3, (e4, e5))))
+
+  | TimeEqInd (e1, (e2, (e3, (e4, (e5, e6))))) ->
+    let e1 = instantiate ~lvl e e1
+    and e2 = instantiate ~lvl e e2
+    and e3 = instantiate ~lvl e e3
+    and e4 = instantiate ~lvl e e4 
+    and e5 = instantiate ~lvl e e5
+    and e6 = instantiate ~lvl e e6 in
+    TimeEqInd (e1, (e2, (e3, (e4, (e5, e6)))))
 
 (** [instantiate k e t] instantiates deBruijn index [k] with [e] in type [t]. *)
 and instantiate_ty ?(lvl=0) e (Ty t) =
@@ -226,6 +246,14 @@ let rec abstract ?(lvl=0) x e =
     and e4 = abstract ~lvl x e4 in
     NatInd (e1, (e2, (e3, e4)))
 
+  | TimeNatInd (e1, (e2, (e3, (e4, e5)))) ->
+    let e1 = abstract ~lvl x e1
+    and e2 = abstract ~lvl x e2
+    and e3 = abstract ~lvl x e3
+    and e4 = abstract ~lvl x e4
+    and e5 = abstract ~lvl x e5 in
+    TimeNatInd (e1, (e2, (e3, (e4, e5))))
+
   | Comp e1 ->
     let e1 = abstract ~lvl x e1 in
     Comp e1
@@ -269,6 +297,14 @@ let rec abstract ?(lvl=0) x e =
     and e5 = abstract ~lvl x e5 in
     EqInd (e1, (e2, (e3, (e4, e5))))
 
+  | TimeEqInd (e1, (e2, (e3, (e4, (e5, e6))))) ->
+    let e1 = abstract ~lvl x e1
+    and e2 = abstract ~lvl x e2
+    and e3 = abstract ~lvl x e3
+    and e4 = abstract ~lvl x e4
+    and e5 = abstract ~lvl x e5 in
+    TimeEqInd (e1, (e2, (e3, (e4, (e5, e6)))))
+
 (** [abstract_ty ~lvl x t] abstracts atom [x] into bound index [lvl] in type [t]. *)
 and abstract_ty ?(lvl=0) x (Ty t) =
   let t = abstract ~lvl x t in
@@ -295,6 +331,8 @@ let rec occurs k = function
   | TimePlus (e1, e2) -> occurs k e1 || occurs k e2
   | NatInd (e1, (e2, (e3, e4))) ->
     occurs k e1 || occurs k e2 || occurs k e3 || occurs k e4
+  | TimeNatInd (e1, (e2, (e3, (e4, e5)))) ->
+    occurs k e1 || occurs k e2 || occurs k e3 || occurs k e4 || occurs k e5
   | Comp e1 -> occurs k e1
   | Ret e1 -> occurs k e1
   | Fmap (e1, e2) -> occurs k e1 || occurs k e2
@@ -305,6 +343,8 @@ let rec occurs k = function
   | Refl e1 -> occurs k e1
   | EqInd (e1, (e2, (e3, (e4, e5)))) ->
     occurs k e1 || occurs k e2 || occurs k e3 || occurs k e4 || occurs k e5
+  | TimeEqInd (e1, (e2, (e3, (e4, (e5, e6))))) ->
+    occurs k e1 || occurs k e2 || occurs k e3 || occurs k e4 || occurs k e5 || occurs k e6
 
 (** [occurs_ty k t] returns [true] when de Bruijn index [k] occurs in type [t]. *)
 and occurs_ty k (Ty t) = occurs k t
@@ -394,6 +434,14 @@ and print_expr' ~penv ?max_level e ppf =
         (print_expr ?max_level ~penv e3)
         (print_expr ?max_level ~penv e4)
 
+      | TimeNatInd (e1, (e2, (e3, (e4, e5)))) ->
+        Format.fprintf ppf "TimeNatInd(%t,%t,%t,%t,%t)"
+        (print_expr ?max_level ~penv e1)
+        (print_expr ?max_level ~penv e2)
+        (print_expr ?max_level ~penv e3)
+        (print_expr ?max_level ~penv e4)
+        (print_expr ?max_level ~penv e5)
+
       | Comp e1 ->
         Format.fprintf ppf "Comp(%t)"
         (print_expr ?max_level ~penv e1)
@@ -437,7 +485,18 @@ and print_expr' ~penv ?max_level e ppf =
         (print_expr ?max_level ~penv e4)
         (print_expr ?max_level ~penv e5)
 
+      | TimeEqInd (e1, (e2, (e3, (e4, (e5, e6))))) ->
+        Format.fprintf ppf "EqInd(%t,%t,%t,%t,%t,%t)"
+        (print_expr ?max_level ~penv e1)
+        (print_expr ?max_level ~penv e2)
+        (print_expr ?max_level ~penv e3)
+        (print_expr ?max_level ~penv e4)
+        (print_expr ?max_level ~penv e5)
+        (print_expr ?max_level ~penv e6)
+     
+
 and print_ty ?max_level ~penv (Ty t) ppf = print_expr ?max_level ~penv t ppf
+
 
 (** [print_app e1 e2 ppf] prints the application [e1 e2] using formatter [ppf],
     possibly as a prefix or infix operator. *)
@@ -536,4 +595,3 @@ and print_prod ?max_level ~penv ((x, u), t) ppf =
                                (print_ty ~max_level:Level.ascription)
                                (fun ~penv -> print_ty ~max_level:Level.in_binder ~penv t)
                                xus)
-

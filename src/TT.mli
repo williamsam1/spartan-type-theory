@@ -23,6 +23,7 @@ type expr =
   | Plus of expr * expr (** primitive addition *)
   | TimePlus of expr * expr (** timing function for primitive addition *)
   | NatInd of expr * (expr * (expr * expr)) (** natural number induction *)
+  | TimeNatInd of expr * (expr * (expr * (expr * expr))) (** timing function for natural number induction *)
   | Comp of expr (** computation *)
   | Ret of expr (** return/pure for Comp *)
   | Fmap of expr * expr (** fmap for Comp *)
@@ -32,6 +33,7 @@ type expr =
   | Eq of expr * expr (** propositional equality *)
   | Refl of expr (** reflexivity *)
   | EqInd of expr * (expr * (expr * (expr * expr))) (** equality induction *)
+  | TimeEqInd of expr * (expr * (expr * (expr * (expr * expr)))) (** timing function for equality induction *)
 
 (** Type *)
 and ty = Ty of expr
@@ -54,7 +56,7 @@ val ty_Prod : Name.ident -> ty -> (Name.ident * ty) list -> ty -> ty
 (** nested application [e1 e2 ... en] *)
 val multi_apply : expr -> expr list -> expr
 
-(** nested addition runtime [e1 (+) e2 (+) ... (+) en *)
+(** nested time plus [e1 (+) e2 (+) ... (+) en] *)
 val multi_time_plus : expr -> expr list -> expr
 
 (** The name of an atom *)

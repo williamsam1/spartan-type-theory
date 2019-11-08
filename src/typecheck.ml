@@ -122,6 +122,19 @@ let rec infer ctx {Location.data=e'; loc} =
     and e4 = check ctx e4 TT.ty_Nat in
     TT.NatInd (e1, (e2, (e3, e4))), TT.Ty (TT.Apply (e1, e4))
 
+  | Syntax.TimeNatInd (k, (e1, (e2, (e3, e4)))) ->
+    let e1 = check ctx e1 (TT.ty_Fun TT.ty_Nat TT.ty_Type) in
+    let e2 = check ctx e2 (TT.Ty (TT.Apply (e1, TT.Zero))) in
+    let var_n = Name.Ident ("n", Name.Word)
+    and x = Name.anonymous ()
+    and nat_n = TT.index_expr 0
+    and nat_n2 = TT.index_expr 1 in
+    let t = TT.ty_Prod var_n TT.ty_Nat [(x, TT.Ty (TT.Apply (e1, nat_n)))] (TT.Ty (TT.Apply (e1, TT.Suc nat_n2))) in
+    let e3 = check ctx e3 t
+    and e4 = check ctx e4 TT.ty_Nat
+    and k = check ctx k TT.ty_Nat in
+    TT.TimeNatInd (k, (e1, (e2, (e3, e4)))), TT.Ty (TT.Comp TT.Nat)
+
   | Syntax.App e1 ->
     let e1 = check ctx e1 TT.ty_Type in
     TT.Comp e1, TT.ty_Type
@@ -196,6 +209,21 @@ let rec infer ctx {Location.data=e'; loc} =
     and e5 = check ctx e5 (TT.Ty (TT.Eq (e3, e4))) in
     TT.EqInd (e1, (e2, (e3, (e4, e5)))), TT.Ty (TT.multi_apply e1 [ e3 ; e4 ; e5 ])
 
+  | Syntax.TimeEqInd (k, (e1, (e2, (e3, (e4, e5))))) ->
+    let e3, a = infer ctx e3 in
+    let e4 = check ctx e4 a in
+    let x = Name.Ident ("x", Name.Word)
+    and y = Name.Ident ("y", Name.Word)
+    and i0 = TT.index_expr 0
+    and i1 = TT.index_expr 1 in
+    let t1 = TT.ty_Prod x a [(y, a)] (TT.ty_Fun (TT.Ty (TT.Eq (i1, i0))) TT.ty_Type) in
+    let e1 = check ctx e1 t1 in
+    let t2 = TT.ty_Prod x a [] (TT.Ty (TT.multi_apply e1 [ i0 ; i0 ; (TT.Refl i0) ])) in
+    let e2 = check ctx e2 t2
+    and e5 = check ctx e5 (TT.Ty (TT.Eq (e3, e4)))
+    and k = check ctx k TT.ty_Nat in
+    TT.TimeEqInd (k, (e1, (e2, (e3, (e4, e5))))), TT.Ty (TT.Comp TT.Nat)
+
 (** [check ctx e ty] checks that [e] has type [ty] in context [ctx].
     It returns the processed expression [e]. *)
 and check ctx ({Location.data=e'; loc} as e) ty =
@@ -223,6 +251,7 @@ and check ctx ({Location.data=e'; loc} as e) ty =
   | Syntax.Plus _
   | Syntax.TimePlus _
   | Syntax.NatInd _
+  | Syntax.TimeNatInd _
   | Syntax.App _
   | Syntax.Ret _
   | Syntax.Fmap _
@@ -232,6 +261,7 @@ and check ctx ({Location.data=e'; loc} as e) ty =
   | Syntax.Eq _
   | Syntax.Refl _
   | Syntax.EqInd _
+  | Syntax.TimeEqInd _
   | Syntax.Ascribe _ ->
      let e, ty' = infer ctx e in
      if Equal.ty ctx ty ty'
@@ -294,4 +324,3 @@ and topfile ~quiet ctx lst =
        fold ctx lst
   in
   fold ctx lst
-

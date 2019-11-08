@@ -78,6 +78,33 @@ let rec norm_expr ~strategy ctx e =
     and n = norm_expr ~strategy ctx n in
     eval_nat_ind ~strategy ctx t a f n
 
+  | TT.TimeNatInd (k, (t, (a, (f, n)))) ->
+    let k = norm_expr ~strategy ctx k
+    and t = norm_expr ~strategy ctx t
+    and a = norm_expr ~strategy ctx a
+    and f = norm_expr ~strategy ctx f
+    and n = norm_expr ~strategy ctx n in
+    begin
+      match k with
+      | TT.Zero ->
+        begin
+          match n with
+          | TT.Zero -> TT.Ret TT.Zero
+          | TT.Suc n ->
+            let t1 = TT.TimeNatInd (k, (t, (a, (f, n))))
+            and t2 = TT.Time (TT.LiftA (TT.Fmap (f, TT.Ret n), TT.Ret (TT.NatInd (t, (a, (f, n))))))
+            in norm_expr ~strategy ctx (TT.TimePlus (t1, t2))
+          | _ -> TT.TimeNatInd (k, (t, (a, (f, n))))
+        end
+      | TT.Suc k -> norm_expr ~strategy ctx (TT.Time (TT.TimeNatInd (k, (t, (a, (f, n))))))
+      | _ ->
+        begin
+          match n with
+          | TT.Zero -> TT.Ret TT.Zero
+          | _ -> TT.TimeNatInd (k, (t, (a, (f, n))))
+        end
+    end
+
   | TT.Comp e1 ->
     let e1 = norm_expr ~strategy ctx e1 in
     TT.Comp e1
@@ -123,6 +150,25 @@ let rec norm_expr ~strategy ctx e =
       match p with
       | TT.Refl e -> norm_expr ~strategy ctx (TT.Apply (r, e))
       | _ -> TT.EqInd (a, (r, (e1, (e2, p))))
+    end
+
+  | TT.TimeEqInd (k, (a, (r, (e1, (e2, p))))) ->
+    let k = norm_expr ~strategy ctx k
+    and a = norm_expr ~strategy ctx a
+    and r = norm_expr ~strategy ctx r
+    and e1 = norm_expr ~strategy ctx e1
+    and e2 = norm_expr ~strategy ctx e2
+    and p = norm_expr ~strategy ctx p in
+    begin
+      match k with
+      | TT.Zero ->
+        begin
+          match p with
+          | TT.Refl e -> norm_expr ~strategy ctx (TT.Time (TT.Fmap (r, TT.Ret e)))
+          | _ -> TT.TimeEqInd (k, (a, (r, (e1, (e2, p)))))
+        end
+      | TT.Suc k -> norm_expr ~strategy ctx (TT.Time (TT.TimeEqInd (k, (a, (r, (e1, (e2, p)))))))
+      | _ -> TT.TimeEqInd (k, (a, (r, (e1, (e2, p)))))
     end
 
 (** Normalize a natural number induction. *)
@@ -216,16 +262,21 @@ and time_expr ~strategy ctx e =
     TT.TimePlus (t1, t2)
 
   | TT.NatInd (t, (a, (f, n))) ->
-    let t1 = time_expr ~strategy ctx n
-    and n' = norm_expr ~strategy ctx n in
-    let t2 = 
-      begin
-        match n' with
-        | TT.Zero -> TT.Ret TT.Zero
-        | TT.Suc k -> time_expr ~strategy ctx (TT.multi_apply f [k; TT.NatInd (t, (a, (f, k)))])
-        | _ -> assert false
-      end in
-    TT.TimePlus (t1, t2)
+    let t1 = time_expr ~strategy ctx t
+    and t2 = time_expr ~strategy ctx a
+    and t3 = time_expr ~strategy ctx f
+    and t4 = time_expr ~strategy ctx n
+    and t5 = TT.TimeNatInd (TT.Zero, (t, (a, (f, n)))) in
+    TT.multi_time_plus t1 [t2; t3; t4; t5]
+
+  | TT.TimeNatInd (k, (t, (a, (f, n)))) ->
+    let t1 = time_expr ~strategy ctx k
+    and t2 = time_expr ~strategy ctx t
+    and t3 = time_expr ~strategy ctx a
+    and t4 = time_expr ~strategy ctx f
+    and t5 = time_expr ~strategy ctx n
+    and t6 = TT.TimeNatInd (TT.Suc k, (t, (a, (f, n)))) in
+    TT.multi_time_plus t1 [t2; t3; t4; t5; t6]
 
   | TT.Comp e1 -> time_expr ~strategy ctx e1
 
@@ -265,15 +316,23 @@ and time_expr ~strategy ctx e =
   | TT.Refl e1 -> time_expr ~strategy ctx e1
 
   | TT.EqInd (a, (r, (e1, (e2, p)))) ->
-    let t1 = time_expr ~strategy ctx p
-    and p' = norm_expr ~strategy ctx p in
-    let t2 = 
-      begin
-        match p' with
-        | TT.Refl _ -> time_expr ~strategy ctx (TT.Apply (r, e1))
-        | _ -> assert false
-      end in
-    TT.TimePlus (t1, t2)
+    let t1 = time_expr ~strategy ctx a
+    and t2 = time_expr ~strategy ctx r
+    and t3 = time_expr ~strategy ctx e1
+    and t4 = time_expr ~strategy ctx e2
+    and t5 = time_expr ~strategy ctx p
+    and t6 = TT.TimeEqInd (TT.Zero, (a, (r, (e1, (e2, p))))) in
+    TT.multi_time_plus t1 [t2; t3; t4; t5; t6]
+
+  | TT.TimeEqInd (k, (a, (r, (e1, (e2, p))))) ->
+    let t1 = time_expr ~strategy ctx k
+    and t2 = time_expr ~strategy ctx a
+    and t3 = time_expr ~strategy ctx r
+    and t4 = time_expr ~strategy ctx e1
+    and t5 = time_expr ~strategy ctx e2
+    and t6 = time_expr ~strategy ctx p
+    and t7 = TT.TimeEqInd (TT.Zero, (a, (r, (e1, (e2, p))))) in
+    TT.multi_time_plus t1 [t2; t3; t4; t5; t6; t7]
 
 (** Normalize the runtime of a computation. *)
 and time_eval ~strategy ctx e =
@@ -358,6 +417,8 @@ let rec infer_TT ctx e =
 
   | TT.NatInd (e1, (e2, (e3, e4))) -> TT.Ty (TT.Apply (e1, e4))
 
+  | TT.TimeNatInd _ -> TT.Ty (TT.Comp TT.Nat)
+
   | TT.Comp _ -> TT.ty_Type
 
   | TT.Ret e1 ->
@@ -410,6 +471,8 @@ let rec infer_TT ctx e =
   | TT.EqInd (e1, (e2, (e3, (e4, e5)))) ->
     TT.Ty (TT.multi_apply e1 [ e3 ; e4 ; e5 ])
 
+  | TT.TimeEqInd _ -> TT.Ty (TT.Comp TT.Nat)
+
 (** Compare expressions [e1] and [e2] at type [ty]? *)
 let rec expr ctx e1 e2 ty =
   (* short-circuit *)
@@ -448,6 +511,8 @@ let rec expr ctx e1 e2 ty =
     | TT.Suc _
     | TT.Plus _
     | TT.TimePlus _
+    | TT.TimeNatInd _
+    | TT.TimeEqInd _
     | TT.Ret _
     | TT.Fmap _
     | TT.LiftA _
@@ -482,6 +547,14 @@ and expr_whnf ctx e1 e2 =
     and e4 = expr_whnf ctx e14 e24 in
     e1 && e2 && e3 && e4
 
+  | TT.TimeNatInd (k1, (e11, (e12, (e13, e14)))), TT.TimeNatInd (k2, (e21, (e22, (e23, e24)))) ->
+    let k = expr_whnf ctx k1 k2
+    and e1 = expr ctx e11 e21 (infer_TT ctx e11)
+    and e2 = expr_whnf ctx e12 e22
+    and e3 = expr ctx e13 e23 (infer_TT ctx e13)
+    and e4 = expr_whnf ctx e14 e24 in
+    k && e1 && e2 && e3 && e4
+
   | TT.Comp e1, TT.Comp e2 -> expr_whnf ctx e1 e2
 
   | TT.Ret e1, TT.Ret e2 -> expr_whnf ctx e1 e2
@@ -508,6 +581,15 @@ and expr_whnf ctx e1 e2 =
     and e4 = expr_whnf ctx e14 e24
     and e5 = expr_whnf ctx e15 e25 in
     e1 && e2 && e3 && e4 && e5
+
+  | TT.TimeEqInd (k1, (e11, (e12, (e13, (e14, e15))))), TT.TimeEqInd (k2, (e21, (e22, (e23, (e24, e25))))) ->
+    let k = expr_whnf ctx k1 k2
+    and e1 = expr ctx e11 e21 (infer_TT ctx e11)
+    and e2 = expr ctx e12 e22 (infer_TT ctx e12)
+    and e3 = expr_whnf ctx e13 e23
+    and e4 = expr_whnf ctx e14 e24
+    and e5 = expr_whnf ctx e15 e25 in
+    k && e1 && e2 && e3 && e4 && e5
 
   | TT.Refl e1, TT.Refl e2 -> expr_whnf ctx e1 e2
 
@@ -545,9 +627,9 @@ and expr_whnf ctx e1 e2 =
       spine ctx (e1, sp1) (e2, sp2)
     end
 
-  | (TT.Type | TT.Nat | TT.Zero | TT.Suc _ | TT.Plus _ | TT.TimePlus _ | TT.NatInd _ 
+  | (TT.Type | TT.Nat | TT.Zero | TT.Suc _ | TT.Plus _ | TT.TimePlus _ | TT.NatInd _ | TT.TimeNatInd _
     | TT.Bound _ | TT.Atom _ | TT.Prod _ | TT.Lambda _ | TT.Apply _ | TT.Comp _ | TT.Ret _ | TT.Fmap _
-    | TT.LiftA _ | TT.Eval _ | TT.Time _ | TT.Eq _ | TT.Refl _ | TT.EqInd _), _ ->
+    | TT.LiftA _ | TT.Eval _ | TT.Time _ | TT.Eq _ | TT.Refl _ | TT.EqInd _ | TT.TimeEqInd _), _ ->
     false
 
 (** Compare two types. *)
