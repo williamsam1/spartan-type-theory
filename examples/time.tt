@@ -168,7 +168,9 @@ Axiom m : Nat.
 Axiom n : Nat. 
 Eval (multiplyTime one (S m)).
 Eval (multiplyTime (S (S n)) (S m)).
-
+Eval (CompEval (Time (Fmap ( * ) (Ret n)))).
+Eval (CompEval (Time (Fmap ( * ) (Ret Z)))).
+Eval (CompEval (Time (Fmap ( * ) (Ret ((S n)))))).
 
 Eval (pred Z).
 Eval (pred (S Z)).
