@@ -212,7 +212,7 @@ and time_expr ctx e =
     begin
       match Context.lookup_def x ctx with
       | None -> TT.Ret TT.Zero
-      | Some e -> assert false
+      | Some e -> time_expr ctx e
     end
 
   | TT.Prod _ -> TT.Ret TT.Zero
@@ -244,7 +244,13 @@ and time_expr ctx e =
     and e3 = TT.Ret (TT.Eval e1) in
     TT.TimePlus (e1, TT.TimePlus (e2, e3))
 
-  | TT.NatInd (t, (a, (f, n))) -> TT.TimeNatInd (TT.Zero, (t, (a, (f, n))))
+  | TT.NatInd (t, (a, (f, n))) -> 
+    begin
+      match n with
+      | TT.Zero -> TT.Ret TT.Zero
+      | TT.Suc e -> TT.TimePlus (time_expr ctx (TT.NatInd (t, (a, (f, e)))), time_expr ctx (TT.multi_apply f [n; TT.NatInd (t, (a, (f, e)))]))
+      | _ -> TT.Time (e)
+    end
 
   | TT.TimeNatInd (k, (t, (a, (f, n)))) -> TT.TimeNatInd (TT.Suc k, (t, (a, (f, n))))
 

@@ -42,6 +42,9 @@ Definition nat_ind := (fun (P : Nat -> Type) (a : P Z)
 Definition nat_rec := (fun (A : Type) (a : A) (f : A -> A)
        => nat_ind (fun (_ : Nat) => A) a (fun (_ : Nat) => f))
        : Π (A : Type), A -> (A -> A) -> Nat -> A.
+Definition nat_rec2 := (fun (A : Type) (a : A) (f : Nat -> A -> A)
+       => nat_ind (fun (_ : Nat) => A) a (f))
+       : Π (A : Type), A -> (Nat -> A -> A) -> Nat -> A.
 Definition ( * ) := nat_rec (Nat -> Nat)
     (fun (_ : Nat) => Z)
     (fun (f : Nat -> Nat) (n : Nat) => n + (f n))
@@ -103,6 +106,7 @@ Definition irrelev := (fun (A B C : Type) (f : A -> B -> C) (g : A -> C) (b : B)
 Definition one := Suc Z.
 Definition two := Suc one.
 Definition three := Suc two.
+Definition six := two * three.
 
 (** Time to evaluate recursively defined addition *)
 Definition plusTime := (fun (m n : Nat) => CompEval (Time (LiftA (Fmap ( + ) (Ret m)) (Ret n))))
@@ -147,3 +151,44 @@ Definition plusTimeSecondEq :=
 (** f m n == m + 2 *)
 Definition plusTimeEq := (irrelev Nat Nat Nat plusTime plusTimeSimpl Z plusTimeSecondEq plusTimeSimplEq)
     : Π (m n : Nat), Eq (plusTimeSimpl m) (plusTime m n).
+
+Definition multiplyTime := (fun (m n : Nat) => CompEval (Time (LiftA (Fmap ( * ) (Ret m)) (Ret n)))) 
+	: Nat -> Nat -> Nat.
+
+Definition Bool := (Π (A : Type), A -> A -> A) : Type.
+Definition true := (fun (A: Type) (x y : A) => x) : Bool.
+Definition false := (fun (A: Type) (x y : A) => y) : Bool.
+Definition isZero := (nat_rec Bool true (fun (_ : Bool ) => false)) : Nat -> Bool.
+Definition pred := nat_rec2 Nat Z (fun (y : Nat) (_ : Nat) => (nat_rec2 Nat Z (fun (n : Nat) (_ : Nat) => S n) y)). 
+Definition multiplyTimeExplicit := (fun (m n : Nat) => isZero m Nat two (two * (pred m) + n + six)) 
+	: Nat -> Nat -> Nat. 
+
+Eval (multiplyTime one Z).
+Axiom m : Nat.
+Axiom n : Nat. 
+Eval (multiplyTime one (S m)).
+Eval (multiplyTime (S (S n)) (S m)).
+
+
+Eval (pred Z).
+Eval (pred (S Z)).
+Eval (pred two).
+Eval (pred three).
+Eval (multiplyTimeExplicit Z Z ).
+Eval (multiplyTimeExplicit one Z ).
+Eval (multiplyTimeExplicit one one ).
+Eval (multiplyTimeExplicit two three ).
+
+Eval (isZero Z).
+Eval (isZero one).
+
+Eval (multiplyTime Z Z).
+Eval (multiplyTime one Z).
+Eval (multiplyTime two Z).
+Eval (multiplyTime three Z).
+Eval (multiplyTime Z one).
+Eval (multiplyTime one one).
+Eval (multiplyTime one two).
+Eval (multiplyTime three one).
+Eval (multiplyTime one three).
+Eval (multiplyTime two two).
