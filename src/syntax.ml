@@ -18,7 +18,6 @@ and expr' =
   | Plus of expr * expr
   | TimePlus of expr * expr
   | NatInd of expr * (expr * (expr * expr))
-  | TimeNatInd of expr * (expr * (expr * (expr * expr)))
   | App of expr
   | Ret of expr
   | Fmap of expr * expr
@@ -28,7 +27,6 @@ and expr' =
   | Eq of expr * expr
   | Refl of expr
   | EqInd of expr * (expr * (expr * (expr * expr)))
-  | TimeEqInd of expr * (expr * (expr * (expr * (expr * expr))))
 
 (** Types (equal to expressions at this point). *)
 and ty = expr
@@ -90,14 +88,6 @@ and shift' n k = function
     and e4 = shift n k e4 in
     NatInd (e1, (e2, (e3, e4)))
 
-  | TimeNatInd (e1, (e2, (e3, (e4, e5)))) ->
-    let e1 = shift n k e1
-    and e2 = shift n k e2
-    and e3 = shift n k e3
-    and e4 = shift n k e4
-    and e5 = shift n k e5 in
-    TimeNatInd (e1, (e2, (e3, (e4, e5))))
-
   | App e1 -> App (shift n k e1)
 
   | Ret e1 -> Ret (shift n k e1)
@@ -130,15 +120,6 @@ and shift' n k = function
     and e4 = shift n k e4
     and e5 = shift n k e5 in
     EqInd (e1, (e2, (e3, (e4, e5))))
-
-  | TimeEqInd (e1, (e2, (e3, (e4, (e5, e6))))) ->
-    let e1 = shift n k e1
-    and e2 = shift n k e2
-    and e3 = shift n k e3
-    and e4 = shift n k e4
-    and e5 = shift n k e5
-    and e6 = shift n k e6 in
-    TimeEqInd (e1, (e2, (e3, (e4, (e5, e6)))))
 
 and shift_ty n k t = shift n k t
 
