@@ -75,6 +75,12 @@ let rec multi_apply e1 es =
   | [] -> e1
   | (e2 :: es) -> multi_apply (Apply (e1, e2)) es
 
+(** nested time plus [e1 (+) e2 (+) ... (+) en] *)
+let rec multi_time_plus e1 es = 
+  match es with
+  | [] -> e1
+  | (e2 :: es) -> multi_time_plus (TimePlus (e1, e2)) es
+
 (** [instantiate ~lvl:k e e'] instantiates deBruijn index [k] with [e] in expression [e']. *)
 let rec instantiate ?(lvl=0) e e' =
   match e' with
@@ -589,4 +595,3 @@ and print_prod ?max_level ~penv ((x, u), t) ppf =
                                (print_ty ~max_level:Level.ascription)
                                (fun ~penv -> print_ty ~max_level:Level.in_binder ~penv t)
                                xus)
-

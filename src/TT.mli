@@ -53,8 +53,11 @@ val ty_Fun : ty -> ty -> ty
 (** nested product type [(x1 : A1) (x2 : A2) ... (xn : An) b] *)
 val ty_Prod : Name.ident -> ty -> (Name.ident * ty) list -> ty -> ty
 
-(** nested Complication [e1 e2 ... en] *)
+(** nested application [e1 e2 ... en] *)
 val multi_apply : expr -> expr list -> expr
+
+(** nested time plus [e1 (+) e2 (+) ... (+) en] *)
+val multi_time_plus : expr -> expr list -> expr
 
 (** The name of an atom *)
 val atom_name : atom -> Name.ident

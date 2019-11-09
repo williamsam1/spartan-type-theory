@@ -1,0 +1,43 @@
+(** Propositional equality *)
+Definition eq := (λ (A : Type) (x y : A) ⇒ Eq x y)
+    : Π (A : Type), A → A → Type.
+
+(** x == x *)
+Definition refl := (λ (A : Type) (x : A) ⇒ Refl x)
+    : Π (A : Type) (x : A), eq A x x.
+
+(** ((x : A) P x x (refl x)) (p : x == y) P x y p *)
+Definition J := (λ (A : Type) (P : Π (x y : A), eq A x y → Type)
+    (r : Π (x : A), P x x (refl A x))
+    (x y : A) (p : eq A x y) ⇒ EqInd P r x y p)
+    : Π (A : Type) (P : Π (x y : A), eq A x y → Type),
+    (Π (x : A), P x x (refl A x))
+    → Π (x y : A) (p : eq A x y), P x y p.
+
+(** x == y → y == x *)
+Definition sym := (λ (A : Type) ⇒
+    J A (λ (x y : A) (p : Eq x y) ⇒ Eq y x)
+        (λ (x : A) ⇒ Refl x))
+    : Π (A : Type) (x y : A), Eq x y → Eq y x.
+
+(** x == y → y == z → x == z *)
+Definition trans := (λ (A : Type) (x y z : A) (p1 : Eq x y) (p2 : Eq y z) ⇒
+    J A (λ (x y : A) (p : Eq x y) ⇒ Π (z : A), Eq y z → Eq x z)
+        (λ (x z : A) (p : Eq x z) ⇒ p)
+        x y p1 z p2)
+    : Π (A : Type) (x y z : A), Eq x y → Eq y z → Eq x z.
+
+(** x == y → y == z → z == w → x == w *)
+Definition trans2 := (λ (A : Type) (x y z w : A)
+    (p1 : Eq x y) (p2 : Eq y z) (p3 : Eq z w) ⇒ trans A x z w (trans A x y z p1 p2) p3)
+    : Π (A : Type) (x y z w : A), Eq x y → Eq y z → Eq z w → Eq x w.
+
+(** x == y → f x == f y *)
+Definition ap := (λ (A B : Type) (f : A → B) ⇒
+	J A (λ (x y : A) (p : Eq x y) ⇒ Eq (f x) (f y)) (λ (x : A) ⇒ Refl (f x)))
+	: Π (A B : Type) (f : A → B) (x y : A), Eq x y → Eq (f x) (f y).
+
+(** x == y → P x → P y *)
+Definition tp := (λ (A : Type) (P : A → Type) ⇒
+	J A (λ (x y : A) (p : Eq x y) ⇒ P x → P y) (λ (x : A) (p : P x) ⇒ p))
+	: Π (A : Type) (P : A → Type) (x y : A), Eq x y → P x → P y.

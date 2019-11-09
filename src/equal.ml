@@ -78,25 +78,30 @@ let rec norm_expr ~strategy ctx e =
     and n = norm_expr ~strategy ctx n in
     eval_nat_ind ~strategy ctx t a f n
 
-  | TT.TimeNatInd (e1, (e2, (e3, (e4, e5)))) ->
+  | TT.TimeNatInd (k, (t, (a, (f, n)))) ->
+    let k = norm_expr ~strategy ctx k
+    and t = norm_expr ~strategy ctx t
+    and a = norm_expr ~strategy ctx a
+    and f = norm_expr ~strategy ctx f
+    and n = norm_expr ~strategy ctx n in
     begin
-      match e1 with
+      match k with
       | TT.Zero ->
         begin
-          match e5 with
+          match n with
           | TT.Zero -> TT.Ret TT.Zero
           | TT.Suc n ->
-            let t1 = TT.TimeNatInd (e1, (e2, (e3, (e4, n))))
-            and t2 = TT.Time (TT.LiftA (TT.Fmap (e4, TT.Ret n), TT.Ret (TT.NatInd (e2, (e3, (e4, n))))))
+            let t1 = TT.TimeNatInd (k, (t, (a, (f, n))))
+            and t2 = TT.Time (TT.LiftA (TT.Fmap (f, TT.Ret n), TT.Ret (TT.NatInd (t, (a, (f, n))))))
             in norm_expr ~strategy ctx (TT.TimePlus (t1, t2))
-          | _ -> TT.TimeNatInd (e1, (e2, (e3, (e4, e5))))
+          | _ -> TT.TimeNatInd (k, (t, (a, (f, n))))
         end
-      | TT.Suc k -> norm_expr ~strategy ctx (TT.Time (TT.TimeNatInd (k, (e2, (e3, (e4, e5))))))
+      | TT.Suc k -> norm_expr ~strategy ctx (TT.Time (TT.TimeNatInd (k, (t, (a, (f, n))))))
       | _ ->
         begin
-          match e5 with
+          match n with
           | TT.Zero -> TT.Ret TT.Zero
-          | _ -> TT.TimeNatInd (e1, (e2, (e3, (e4, e5))))
+          | _ -> TT.TimeNatInd (k, (t, (a, (f, n))))
         end
     end
 
@@ -162,7 +167,7 @@ let rec norm_expr ~strategy ctx e =
           | TT.Refl e -> norm_expr ~strategy ctx (TT.Time (TT.Fmap (r, TT.Ret e)))
           | _ -> TT.TimeEqInd (k, (a, (r, (e1, (e2, p)))))
         end
-      | TT.Suc k' -> norm_expr ~strategy ctx (TT.Time (TT.TimeEqInd (k', (a, (r, (e1, (e2, p)))))))
+      | TT.Suc k -> norm_expr ~strategy ctx (TT.Time (TT.TimeEqInd (k, (a, (r, (e1, (e2, p)))))))
       | _ -> TT.TimeEqInd (k, (a, (r, (e1, (e2, p)))))
     end
 
@@ -187,22 +192,37 @@ and eval_eval ~strategy ctx e =
     norm_expr ~strategy ctx (TT.Plus (TT.Eval e1, TT.Eval e2))
   | _ -> TT.Eval e
 
-and time_spine e1 sp =
+and time_spine ~strategy ctx e1 sp =
   begin
     match sp with
-    | [] -> TT.Ret TT.Zero
-    | e2 :: sp -> time_spine_impl (TT.Fmap (e1, TT.Ret e2)) sp
+    | [] -> time_expr ~strategy ctx e1
+    | e2 :: sp ->
+      begin
+        match e1 with
+        | TT.Lambda (_, e') ->
+          let t1 = TT.Ret (TT.Suc TT.Zero)
+          and t2 = time_expr ~strategy ctx e2
+          and e2' = norm_expr ~strategy ctx e2 in
+          let e' = TT.instantiate e2' e' in
+          let t3 = time_spine ~strategy ctx e' sp in
+          TT.multi_time_plus t1 [t2 ; t3]
+        | _ ->
+          let t1 = time_spine_var (TT.Fmap (e1, TT.Ret e2)) sp
+          and t2 = time_expr ~strategy ctx e2
+          and ts = List.map (time_expr ~strategy ctx) sp in
+          TT.multi_time_plus t1 (t2 :: ts) 
+      end
   end
 
-and time_spine_impl e sp =
+and time_spine_var e sp =
   begin
     match sp with
     | [] -> e
-    | e2 :: sp -> time_spine_impl (TT.LiftA (e, TT.Ret e2)) sp
+    | e2 :: sp -> time_spine_var (TT.LiftA (e, TT.Ret e2)) sp
   end
 
 (** Runtime of a syntactic expression. *)
-and time_expr ctx e = 
+and time_expr ~strategy ctx e = 
   match e with
   | TT.Bound k -> TT.Ret TT.Zero
 
@@ -212,7 +232,7 @@ and time_expr ctx e =
     begin
       match Context.lookup_def x ctx with
       | None -> TT.Ret TT.Zero
-      | Some e -> time_expr ctx e
+      | Some e -> time_expr ~strategy ctx e
     end
 
   | TT.Prod _ -> TT.Ret TT.Zero
@@ -220,85 +240,112 @@ and time_expr ctx e =
   | TT.Lambda _ -> TT.Ret TT.Zero
 
   | TT.Apply (e1, e2) ->
-    begin
-      match e1 with
-      | TT.Lambda (_, e') ->
-        let e' = TT.instantiate e2 e' in
-        TT.TimePlus (TT.Ret (TT.Suc TT.Zero), time_expr ctx e')
-      | _ ->
-        let (e, sp) = collect_spine [e2] e1 in
-        TT.Time (time_spine e sp)
-    end
+    let t1 = time_expr ~strategy ctx e1
+    and e1' = norm_expr ~strategy ctx e1
+    and t2 = time_expr ~strategy ctx e2
+    and e2' = norm_expr ~strategy ctx e2 in
+    let (e, sp) = collect_spine [e2'] e1' in
+    let t3 = time_spine ~strategy ctx e sp in
+    TT.multi_time_plus t1 [t2; t3]
 
   | TT.Nat -> TT.Ret TT.Zero
 
   | TT.Zero -> TT.Ret TT.Zero
 
-  | TT.Suc e -> TT.Ret TT.Zero
+  | TT.Suc e -> time_expr ~strategy ctx e
 
   | TT.Plus (e1, e2) -> TT.Ret e1
 
   | TT.TimePlus (e1, e2) ->
-    let e1 = time_expr ctx e1
-    and e2 = time_expr ctx e2
-    and e3 = TT.Ret (TT.Eval e1) in
-    TT.TimePlus (e1, TT.TimePlus (e2, e3))
+    let t1 = time_expr ~strategy ctx e1
+    and t2 = time_expr ~strategy ctx e2 in
+    TT.TimePlus (t1, t2)
 
-  | TT.NatInd (t, (a, (f, n))) -> 
-    begin
-      match n with
-      | TT.Zero -> TT.Ret TT.Zero
-      | TT.Suc e -> TT.TimePlus (time_expr ctx (TT.NatInd (t, (a, (f, e)))), time_expr ctx (TT.multi_apply f [n; TT.NatInd (t, (a, (f, e)))]))
-      | _ -> TT.Time (e)
-    end
+  | TT.NatInd (t, (a, (f, n))) ->
+    let t1 = time_expr ~strategy ctx t
+    and t2 = time_expr ~strategy ctx a
+    and t3 = time_expr ~strategy ctx f
+    and t4 = time_expr ~strategy ctx n
+    and t5 = TT.TimeNatInd (TT.Zero, (t, (a, (f, n)))) in
+    TT.multi_time_plus t1 [t2; t3; t4; t5]
 
-  | TT.TimeNatInd (k, (t, (a, (f, n)))) -> TT.TimeNatInd (TT.Suc k, (t, (a, (f, n))))
+  | TT.TimeNatInd (k, (t, (a, (f, n)))) ->
+    let t1 = time_expr ~strategy ctx k
+    and t2 = time_expr ~strategy ctx t
+    and t3 = time_expr ~strategy ctx a
+    and t4 = time_expr ~strategy ctx f
+    and t5 = time_expr ~strategy ctx n
+    and t6 = TT.TimeNatInd (TT.Suc k, (t, (a, (f, n)))) in
+    TT.multi_time_plus t1 [t2; t3; t4; t5; t6]
 
-  | TT.Comp e1 -> TT.Ret TT.Zero
+  | TT.Comp e1 -> time_expr ~strategy ctx e1
 
-  | TT.Ret e1 -> TT.Ret TT.Zero
+  | TT.Ret e1 -> time_expr ~strategy ctx e1
 
-  | TT.Fmap (e1, e2) -> TT.Ret TT.Zero
+  | TT.Fmap (e1, e2) ->
+    let t1 = time_expr ~strategy ctx e1
+    and t2 = time_expr ~strategy ctx e2
+    in TT.TimePlus (t1, t2)
 
-  | TT.LiftA (e1, e2) -> TT.Ret TT.Zero
+  | TT.LiftA (e1, e2) ->
+    let t1 = time_expr ~strategy ctx e1
+    and t2 = time_expr ~strategy ctx e2 in
+    TT.TimePlus (t1, t2)
 
-  | TT.Eval e1 -> TT.Ret TT.Zero
+  | TT.Eval e ->
+    let t1 = time_expr ~strategy ctx e
+    and e' = norm_expr ~strategy ctx e in
+    let t2 = 
+      begin
+        match e' with
+        | TT.Ret e -> time_expr ~strategy ctx e
+        | TT.Fmap (e1, e2) -> time_expr ~strategy ctx (TT.Apply (e1, TT.Eval e2))
+        | TT.LiftA (e1, e2) -> time_expr ~strategy ctx (TT.Apply (TT.Eval e1, TT.Eval e2))
+        | TT.TimePlus (e1, e2) -> time_expr ~strategy ctx (TT.Plus (TT.Eval e1, TT.Eval e2))
+        | _ -> assert false
+      end in
+    TT.TimePlus (t1, t2)
 
-  | TT.Time e1 -> TT.Ret TT.Zero
+  | TT.Time e1 -> assert false
 
-  | TT.Eq (e1, e2) -> TT.Ret TT.Zero
+  | TT.Eq (e1, e2) ->
+    let t1 = time_expr ~strategy ctx e1
+    and t2 = time_expr ~strategy ctx e2 in
+    TT.TimePlus (t1, t2)
 
-  | TT.Refl e1 -> TT.Ret TT.Zero
+  | TT.Refl e1 -> time_expr ~strategy ctx e1
 
-  | TT.EqInd (a, (r, (e1, (e2, p)))) -> TT.TimeEqInd (TT.Zero, (a, (r, (e1, (e2, p)))))
+  | TT.EqInd (a, (r, (e1, (e2, p)))) ->
+    let t1 = time_expr ~strategy ctx a
+    and t2 = time_expr ~strategy ctx r
+    and t3 = time_expr ~strategy ctx e1
+    and t4 = time_expr ~strategy ctx e2
+    and t5 = time_expr ~strategy ctx p
+    and t6 = TT.TimeEqInd (TT.Zero, (a, (r, (e1, (e2, p))))) in
+    TT.multi_time_plus t1 [t2; t3; t4; t5; t6]
 
-  | TT.TimeEqInd (k, (a, (r, (e1, (e2, p))))) -> TT.TimeEqInd (TT.Suc k, (a, (r, (e1, (e2, p)))))
+  | TT.TimeEqInd (k, (a, (r, (e1, (e2, p))))) ->
+    let t1 = time_expr ~strategy ctx k
+    and t2 = time_expr ~strategy ctx a
+    and t3 = time_expr ~strategy ctx r
+    and t4 = time_expr ~strategy ctx e1
+    and t5 = time_expr ~strategy ctx e2
+    and t6 = time_expr ~strategy ctx p
+    and t7 = TT.TimeEqInd (TT.Zero, (a, (r, (e1, (e2, p))))) in
+    TT.multi_time_plus t1 [t2; t3; t4; t5; t6; t7]
 
 (** Normalize the runtime of a computation. *)
 and time_eval ~strategy ctx e =
   match e with
   | TT.Ret e -> TT.Ret TT.Zero
   | TT.Fmap (e1, e2) ->
-    let t1 = TT.Time e2
-    and e2 = norm_expr ~strategy ctx (TT.Eval e2) in
-    let e = TT.Apply (e1, e2) in
-    let t2 = time_expr ctx e in
-    let t = TT.TimePlus (t1, t2) in
+    let t = time_expr ~strategy ctx (TT.Apply (e1, TT.Eval e2)) in
     norm_expr ~strategy ctx t
   | TT.LiftA (e1, e2) ->
-    let t1 = TT.Time e1
-    and e1 = norm_expr ~strategy ctx (TT.Eval e1)
-    and t2 = TT.Time e2
-    and e2 = norm_expr ~strategy ctx (TT.Eval e2) in
-    let e = TT.Apply (e1, e2) in
-    let t3 = time_expr ctx e in
-    let t = TT.TimePlus (TT.TimePlus (t1, t2), t3) in
+    let t = time_expr ~strategy ctx (TT.Apply (TT.Eval e1, TT.Eval e2)) in
     norm_expr ~strategy ctx t
   | TT.TimePlus (e1, e2) ->
-    let t1 = TT.Time e1
-    and t2 = TT.Time e2
-    and t3 = TT.Ret (TT.Eval e1) in
-    let t = TT.TimePlus (t1, TT.TimePlus (t2, t3)) in
+    let t = time_expr ~strategy ctx (TT.Plus (TT.Eval e1, TT.Eval e2)) in
     norm_expr ~strategy ctx t
   | _ -> TT.Time e
 
