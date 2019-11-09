@@ -4,6 +4,7 @@
 type expr = expr' Location.located
 and expr' =
   | Var of Name.ident
+  | Numeral of int
   | Type
   | Prod of (Name.ident list * ty) list * ty
   | Lambda of (Name.ident list * ty option) list * ty

@@ -16,11 +16,10 @@ Definition ( * ) := natRec (Nat -> Nat)
 	(fun (f : Nat -> Nat) (n : Nat) => n + (f n))
 	   : Nat -> Nat -> Nat.
 
-Definition one := suc Zero.
+Definition one := suc 0.
 Definition two := suc one.
 Definition three := one + two.
 Definition five := two + three.
 Definition ten := five + five.
 Definition hundred := ten * ten.
 Definition thousand := hundred * ten.
-Eval thousand.

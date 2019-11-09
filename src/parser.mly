@@ -20,6 +20,7 @@
 %token NAT
 %token ZERO
 %token SUC
+%token <int> NUMERAL
 %token PLUS
 %token NATIND
 %token COMP
@@ -132,6 +133,7 @@ plain_simple_term:
   | NAT                                { Input.Nat }
   | ZERO                               { Input.Zero }
   | x=var_name                         { Input.Var x }
+  | i=NUMERAL                          { Input.Numeral i }
 
 var_name:
   | NAME                     { $1 }
