@@ -30,7 +30,7 @@ Definition S_time_eq := (fun (n : Nat) =>
     n)
     : Π (n : Nat), Eq (S_time n) (S Z).
 
-(** Time to evaluate recursively defined addition *)
+(** Time to evaluate atomically defined addition *)
 Definition plusTime := (fun (m n : Nat) => CompEval (Time (LiftA (Fmap ( + ) (Ret m)) (Ret n))))
     : Nat -> Nat -> Nat.
 
@@ -74,45 +74,27 @@ Definition plusTimeSecondEq :=
 Definition plusTimeEq := (irrelev Nat Nat Nat plusTime plusTimeSimpl Z plusTimeSecondEq plusTimeSimplEq)
     : Π (m n : Nat), Eq (plusTimeSimpl m) (plusTime m n).
 
-Definition multiplyTime := (fun (m n : Nat) => CompEval (Time (LiftA (Fmap ( * ) (Ret m)) (Ret n)))) 
+(** Time to evaluate recursively defined multiplication *)
+Definition multTime := (fun (m n : Nat) => CompEval (Time (LiftA (Fmap ( * ) (Ret m)) (Ret n)))) 
 	: Nat -> Nat -> Nat.
-
-Definition Bool := (Π (A : Type), A -> A -> A) : Type.
-Definition true := (fun (A: Type) (x y : A) => x) : Bool.
-Definition false := (fun (A: Type) (x y : A) => y) : Bool.
-Definition isZero := (nat_rec Bool true (fun (_ : Bool ) => false)) : Nat -> Bool.
-Definition pred := nat_rec2 Nat Z (fun (y : Nat) (_ : Nat) => (nat_rec2 Nat Z (fun (n : Nat) (_ : Nat) => S n) y)). 
-Definition multiplyTimeExplicit := (fun (m n : Nat) => isZero m Nat 2 (2 * (pred m) + n + 6)) 
+Definition multTimeExplicit := (fun (m n : Nat) => 2 + (5 * m) + (m * n))
 	: Nat -> Nat -> Nat. 
 
-Eval (multiplyTime 1 Z).
-Axiom m : Nat.
-Axiom n : Nat. 
-Eval (multiplyTime 1 (S m)).
-Eval (multiplyTime (S (S n)) (S m)).
-Eval (CompEval (Time (Fmap ( * ) (Ret n)))).
-Eval (CompEval (Time (Fmap ( * ) (Ret Z)))).
-Eval (CompEval (Time (Fmap ( * ) (Ret ((S n)))))).
+(** f(0,n) == 2 *)
+Definition multTime0 := (fun (n : Nat) => Refl 2)
+    : Π (n : Nat), Eq (multTime 0 n) 2.
 
-Eval (pred 0).
-Eval (pred (1)).
-Eval (pred 2).
-Eval (pred 3).
-Eval (multiplyTimeExplicit 0 0 ).
-Eval (multiplyTimeExplicit 1 0 ).
-Eval (multiplyTimeExplicit 1 1 ).
-Eval (multiplyTimeExplicit 2 3 ).
+(** Normalized form of multiplication runtime *)
+Definition multTimeDef := (fun (m n : Nat) => Refl (multTime m n))
+    : Π (m n : Nat),
+        Eq (multTime m n)
+        ((CompEval (Time (Fmap ( * ) (Ret m))) + 0)
+          + ((m * n) + 0)).
 
-Eval (isZero 0).
-Eval (isZero 1).
+(**
+f(m,n)   == 2 + 5 * m + m * n
 
-Eval (multiplyTime 0 0).
-Eval (multiplyTime 1 0).
-Eval (multiplyTime 2 0).
-Eval (multiplyTime 3 0).
-Eval (multiplyTime 0 1).
-Eval (multiplyTime 1 1).
-Eval (multiplyTime 1 2).
-Eval (multiplyTime 3 1).
-Eval (multiplyTime 1 3).
-Eval (multiplyTime 2 2).
+f(0,0)   == 2
+f(m+1,n) == 5 + n + f(m,n)
+f(m,n+1) == m + f(m,n)
+*)

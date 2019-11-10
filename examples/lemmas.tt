@@ -31,7 +31,7 @@ Definition plus_comm :=
     : Π (m n : Nat), Eq (m + n) (n + m).
 
 (** f 0 == a → f (S n) = S (f n) → f n == n + a *)
-Definition lin_λc := (λ (f : Nat → Nat) (a : Nat) (f0 : Eq (f Z) a)
+Definition lin_func := (λ (f : Nat → Nat) (a : Nat) (f0 : Eq (f Z) a)
     (fS : Π (n : Nat), Eq (f (S n)) (S (f n))) ⇒
     nat_ind (λ (n : Nat) ⇒ Eq (f n) (n + a))
     f0

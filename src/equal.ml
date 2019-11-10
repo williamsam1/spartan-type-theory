@@ -498,7 +498,6 @@ let rec expr ctx e1 e2 ty =
     | TT.NatInd _
     | TT.Comp _
     | TT.Eval _
-    | TT.Time _
     | TT.Eq _
     | TT.EqInd _
     | TT.Atom _ ->
@@ -510,6 +509,7 @@ let rec expr ctx e1 e2 ty =
     | TT.Zero
     | TT.Suc _
     | TT.Plus _
+    | TT.Time _
     | TT.TimePlus _
     | TT.TimeNatInd _
     | TT.TimeEqInd _
@@ -537,12 +537,12 @@ and expr_whnf ctx e1 e2 =
   | TT.Plus (e11, e12), TT.Plus (e21, e22) ->
     expr_whnf ctx e11 e21 && expr_whnf ctx e12 e22
 
-  | TT.TimePlus (e11, e12), TT.Plus (e21, e22) ->
+  | TT.TimePlus (e11, e12), TT.TimePlus (e21, e22) ->
     expr_whnf ctx e11 e21 && expr_whnf ctx e12 e22
 
   | TT.NatInd (e11, (e12, (e13, e14))), TT.NatInd (e21, (e22, (e23, e24))) ->
     let e1 = expr ctx e11 e21 (infer_TT ctx e11)
-    and e2 = expr_whnf ctx e12 e22
+    and e2 = expr ctx e12 e22 (infer_TT ctx e12)
     and e3 = expr ctx e13 e23 (infer_TT ctx e13)
     and e4 = expr_whnf ctx e14 e24 in
     e1 && e2 && e3 && e4
@@ -550,7 +550,7 @@ and expr_whnf ctx e1 e2 =
   | TT.TimeNatInd (k1, (e11, (e12, (e13, e14)))), TT.TimeNatInd (k2, (e21, (e22, (e23, e24)))) ->
     let k = expr_whnf ctx k1 k2
     and e1 = expr ctx e11 e21 (infer_TT ctx e11)
-    and e2 = expr_whnf ctx e12 e22
+    and e2 = expr ctx e12 e22 (infer_TT ctx e12)
     and e3 = expr ctx e13 e23 (infer_TT ctx e13)
     and e4 = expr_whnf ctx e14 e24 in
     k && e1 && e2 && e3 && e4
@@ -577,8 +577,8 @@ and expr_whnf ctx e1 e2 =
   | TT.EqInd (e11, (e12, (e13, (e14, e15)))), TT.EqInd (e21, (e22, (e23, (e24, e25)))) ->
     let e1 = expr ctx e11 e21 (infer_TT ctx e11)
     and e2 = expr ctx e12 e22 (infer_TT ctx e12)
-    and e3 = expr_whnf ctx e13 e23
-    and e4 = expr_whnf ctx e14 e24
+    and e3 = expr ctx e13 e23 (infer_TT ctx e13)
+    and e4 = expr ctx e14 e24 (infer_TT ctx e14)
     and e5 = expr_whnf ctx e15 e25 in
     e1 && e2 && e3 && e4 && e5
 
@@ -586,8 +586,8 @@ and expr_whnf ctx e1 e2 =
     let k = expr_whnf ctx k1 k2
     and e1 = expr ctx e11 e21 (infer_TT ctx e11)
     and e2 = expr ctx e12 e22 (infer_TT ctx e12)
-    and e3 = expr_whnf ctx e13 e23
-    and e4 = expr_whnf ctx e14 e24
+    and e3 = expr ctx e13 e23 (infer_TT ctx e13)
+    and e4 = expr ctx e14 e24 (infer_TT ctx e14)
     and e5 = expr_whnf ctx e15 e25 in
     k && e1 && e2 && e3 && e4 && e5
 
