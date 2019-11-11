@@ -14,6 +14,8 @@
 %token COMMA COLON DARROW ARROW
 
 (* Expressions *)
+%token LET
+%token IN
 %token TYPE
 %token PROD
 %token LAMBDA
@@ -88,7 +90,27 @@ plain_term:
   | PROD a=prod_abstraction COMMA e=term        { Input.Prod (a, e) }
   | e1=infix_term ARROW e2=term                 { Input.Arrow (e1, e2) }
   | LAMBDA a=lambda_abstraction DARROW e=term   { Input.Lambda (a, e) }
+  | LET x=var_name COLON t=term
+      COLONEQ e1=term IN e2=term
+    {
+      let {Location.data=op; loc} = e2 in
+      let op = Location.locate ~loc (Input.Lambda ([([x], Some t)], e2)) in
+      Input.Apply (op, e1)
+    }
+  | LET x=var_name COLONEQ e1=term IN e2=term
+    {
+      let {Location.data=op; loc} = e2 in
+      let op = Location.locate ~loc (Input.Lambda ([([x], None)], e2)) in
+      Input.Apply (op, e1)
+    }
   | e=infix_term COLON t=term                   { Input.Ascribe (e, t) }
+
+
+  | oploc=prefix e2=prefix_term
+    { let {Location.data=op; loc} = oploc in
+      let op = Location.locate ~loc (Input.Var op) in
+      Input.Apply (op, e2)
+    }
 
 infix_term: mark_location(plain_infix_term) { $1 }
 plain_infix_term:

@@ -1,6 +1,8 @@
 Definition Z := Zero : Nat.
 Definition S := (fun (n : Nat) => Suc n)
        : Nat -> Nat.
+Definition S2 := (fun (n : Nat) => S (S n))
+       : Nat -> Nat.
 Definition ( + ) := (fun (m n : Nat) => Plus m n)
        : Nat -> Nat -> Nat.
 Definition nat_ind := (fun (P : Nat -> Type) (a : P Z)

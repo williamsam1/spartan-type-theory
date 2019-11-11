@@ -7,6 +7,8 @@ let reserved = [
   ("Definition", Parser.DEFINITION) ;
   ("Eval", Parser.EVAL) ;
   ("Compare", Parser.COMPARE) ;
+  ("let", Parser.LET) ;
+  ("in", Parser.IN) ;
   ("fun", Parser.LAMBDA) ;
   ("λ", Parser.LAMBDA) ;
   ("Load", Parser.LOAD) ;

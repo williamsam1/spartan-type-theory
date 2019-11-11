@@ -111,12 +111,48 @@ Definition multIndTime0 := (Refl 0)
     g(m+1) == g(m) + (S ((g(m) + g(m)) + (S (g(m) + 0))))
            == 2 + 4 * g(m)
 *)
-
 Definition multIndTimeS := (fun (m : Nat) => Refl (multIndTime (1 + m)))
     : forall (m : Nat),
         Eq
             (multIndTime (1 + m))
-            ((multIndTime m) + (S (((multIndTime m) + (multIndTime m)) + (S ((multIndTime m) + 0))))).
+            (multIndTime m + S ((multIndTime m + multIndTime m) + (1 + multIndTime m + 0))).
+
+Definition rearrange := (fun (m : Nat) =>
+    let eq1 : Eq (S (m + 0)) (S m)
+        := ap Nat Nat S (m + 0) m (plus_comm (m) 0)
+    in
+    let eq2 : Eq ((m + m) + (S (m + 0))) ((m + m) + (S m))
+        := ap Nat Nat (( + ) (m + m)) (S (m + 0)) (S m) eq1
+    in
+    let eq3 : Eq ((m + m) + (S m)) (S (m + (m + m)))
+        := plus_comm (m + m) (S m)
+    in
+    let eq4 : Eq ((m + m) + (S (m + 0))) (S (m + (m + m)))
+        := trans Nat ((m + m) + (S (m + 0))) ((m + m) + (S m)) (S (m + (m + m))) eq2 eq3
+    in
+    let eq5 : Eq (S ((m + m) + (S (m + 0)))) (S (S (m + (m + m))))
+        := ap Nat Nat S ((m + m) + (S (m + 0))) (S (m + (m + m))) eq4
+    in
+    let eq6 : Eq (m + S ((m + m) + (S (m + 0)))) (m + S (S (m + (m + m))))
+        := ap Nat Nat (( + ) m) (S ((m + m) + (S (m + 0)))) (S (S (m + (m + m)))) eq5
+    in
+    let eq7 : Eq (m + S (S (m + (m + m)))) (S (S (m + (m + m))) + m)
+        := plus_comm m (S (S (m + (m + m))))
+    in
+    let eq8 : Eq (m + S ((m + m) + (S (m + 0)))) (2 + ((m + (m + m)) + m))
+        := trans Nat (m + S ((m + m) + (S (m + 0)))) (m + S (S (m + (m + m)))) (S (S (m + (m + m))) + m) eq6 eq7
+    in
+    let eq9 : Eq ((m + (m + m)) + m) (m + (m + (m + m)))
+        := plus_comm (m + (m + m)) m
+    in
+    let eq10 : Eq ((m + (m + m)) + m) (4 * m)
+        := tp Nat (fun (x : Nat) => Eq ((m + (m + m)) + m) (m + (m + (m + x)))) m (m + 0) (plus_comm 0 m) eq9
+    in
+    let eq11 : Eq (2 + (m + (m + m)) + m) (2 + 4 * m)
+        := ap Nat Nat S2 ((m + (m + m)) + m) (4 * m) eq10
+    in
+    trans Nat (m + S ((m + m) + (S (m + 0)))) (2 + ((m + (m + m)) + m)) (2 + 4 * m) eq8 eq11)
+    : forall (m : Nat), Eq (m + S ((m + m) + (S (m + 0)))) (2 + 4 * m).
 
 (**
 f(m,n)   == 2 + 5 * m + m * n
