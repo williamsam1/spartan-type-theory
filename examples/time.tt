@@ -84,12 +84,39 @@ Definition multTimeExplicit := (fun (m n : Nat) => 2 + (5 * m) + (m * n))
 Definition multTime0 := (fun (n : Nat) => Refl 2)
     : Π (n : Nat), Eq (multTime 0 n) 2.
 
+(** Time to evaluate first argument of multiplication *)
+Definition multArg1Time := (fun (m : Nat) => CompEval (Time (Fmap ( * ) (Ret m))))
+    : Nat -> Nat.
+
 (** Normalized form of multiplication runtime *)
 Definition multTimeDef := (fun (m n : Nat) => Refl (multTime m n))
     : Π (m n : Nat),
-        Eq (multTime m n)
-        ((CompEval (Time (Fmap ( * ) (Ret m))) + 0)
-          + ((m * n) + 0)).
+        Eq
+            (multTime m n)
+            ((multArg1Time m + 0)
+                + ((m * n) + 0)).
+
+(** Time to apply first argument of multiplication *)
+Definition multIndTime := (fun (m : Nat) => CompEval (time_nat_rec 0 (Nat -> Nat)
+    (fun (_ : Nat) => Z)
+    (fun (f : Nat -> Nat) (n : Nat) => n + (f n))
+    m))
+       : Nat -> Nat.
+
+(** g(0) == 0 *)
+Definition multIndTime0 := (Refl 0)
+    : Eq (multIndTime 0) 0.
+
+(**
+    g(m+1) == g(m) + (S ((g(m) + g(m)) + (S (g(m) + 0))))
+           == 2 + 4 * g(m)
+*)
+
+Definition multIndTimeS := (fun (m : Nat) => Refl (multIndTime (1 + m)))
+    : forall (m : Nat),
+        Eq
+            (multIndTime (1 + m))
+            ((multIndTime m) + (S (((multIndTime m) + (multIndTime m)) + (S ((multIndTime m) + 0))))).
 
 (**
 f(m,n)   == 2 + 5 * m + m * n

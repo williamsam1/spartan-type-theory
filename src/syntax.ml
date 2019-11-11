@@ -40,6 +40,7 @@ and toplevel' =
   | TopDefinition of Name.ident * expr
   | TopCheck of expr
   | TopEval of expr
+  | TopCompare of expr * expr
   | TopAxiom of Name.ident * expr
 
 (** Shift all indices greter than or equal to [n] by [k]. *)

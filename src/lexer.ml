@@ -6,6 +6,7 @@ let reserved = [
   ("Check", Parser.CHECK) ;
   ("Definition", Parser.DEFINITION) ;
   ("Eval", Parser.EVAL) ;
+  ("Compare", Parser.COMPARE) ;
   ("fun", Parser.LAMBDA) ;
   ("λ", Parser.LAMBDA) ;
   ("Load", Parser.LOAD) ;
@@ -19,6 +20,7 @@ let reserved = [
   ("Suc", Parser.SUC) ;
   ("Plus", Parser.PLUS) ;
   ("NatInd", Parser.NATIND) ;
+  ("TimeNatInd", Parser.TIMENATIND) ;
   ("Comp", Parser.COMP) ;
   ("Ret", Parser.RET) ;
   ("Fmap", Parser.FMAP) ;

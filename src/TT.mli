@@ -62,6 +62,8 @@ val multi_time_plus : expr -> expr list -> expr
 (** The name of an atom *)
 val atom_name : atom -> Name.ident
 
+val head : expr -> string
+
 (** Print a TT expression *)
 val print_expr : ?max_level:Level.t -> penv:Name.ident list -> expr -> Format.formatter -> unit
 

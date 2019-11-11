@@ -385,6 +385,32 @@ let rec to_int e =
         end
       | _ -> None
 
+let head e =
+  match e with
+  | Bound _ -> "Bound"
+  | Atom _ -> "Atom"
+  | Type -> "Type"
+  | Prod _ -> "Prod"
+  | Lambda _ -> "Lambda"
+  | Apply _ -> "Apply"
+  | Nat -> "Nat"
+  | Zero -> "Zero"
+  | Suc _ -> "Suc"
+  | Plus _ -> "Plus"
+  | TimePlus _ -> "TimePlus"
+  | NatInd _ -> "NatInd"
+  | TimeNatInd _ -> "TimeNatInd"
+  | Comp _ -> "Comp"
+  | Ret _ -> "Ret"
+  | Fmap _ -> "Fmap"
+  | LiftA _ -> "LiftA"
+  | Eval _ -> "Eval"
+  | Time _ -> "Time"
+  | Eq _ -> "Eq"
+  | Refl _ -> "Refl"
+  | EqInd _ -> "EqInd"
+  | TimeEqInd _ -> "TimeEqInd"
+
 let rec print_expr ?max_level ~penv e ppf =
     print_expr' ~penv ?max_level e ppf
 
@@ -418,7 +444,7 @@ and print_expr' ~penv ?max_level e ppf =
         end
 
       | Plus (e1, e2) ->
-        Format.fprintf ppf "%t + %t"
+        Format.fprintf ppf "(%t) + (%t)"
         (print_expr ~max_level:Level.eq_left ~penv e1)
         (print_expr ~max_level:Level.eq_right ~penv e2)
 

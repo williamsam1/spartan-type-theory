@@ -16,6 +16,7 @@ and expr' =
   | Suc of expr
   | Plus of expr * expr
   | NatInd of expr * (expr * (expr * expr))
+  | TimeNatInd of expr * (expr * (expr * (expr * expr)))
   | Comp of expr
   | Ret of expr
   | Fmap of expr * expr
@@ -36,4 +37,5 @@ and toplevel' =
   | TopDefinition of Name.ident * expr
   | TopCheck of expr
   | TopEval of expr
+  | TopCompare of expr * expr
   | TopAxiom of Name.ident * expr

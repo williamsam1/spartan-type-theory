@@ -264,11 +264,21 @@ and check ctx ({Location.data=e'; loc} as e) ty =
   | Syntax.TimeEqInd _
   | Syntax.Ascribe _ ->
      let e, ty' = infer ctx e in
-     if Equal.ty ctx ty ty'
-     then
-       e
-     else
-       error ~loc (TypeExpected (ty, ty'))
+      let v = Equal.ty' ctx ty ty' in
+      let _ = 
+        begin
+          match v with
+          | None -> ()
+          | Some (e1, e2) ->
+              Print.error "%t\n    !=\n%t\n%s %s"
+                (TT.print_expr ~penv:(Context.penv ctx) e1)
+                (TT.print_expr ~penv:(Context.penv ctx) e2)
+                (TT.head e1)
+                (TT.head e2)
+        end in
+      if v = None
+      then e
+      else error ~loc (TypeExpected (ty, ty'))
 
 (** [check_ty ctx t] checks that [t] is a type in context [ctx]. It returns the processed
    type [t]. *)
@@ -308,6 +318,29 @@ and toplevel' ~quiet ctx = function
        (TT.print_expr ~penv:(Context.penv ctx) e')
        (TT.print_ty ~penv:(Context.penv ctx) ty) ;
      ctx
+
+  | Syntax.TopCompare (e1, e2) ->
+      let e1, ty = infer ctx e1 in
+      let e2 = check ctx e2 ty in
+      let v = Equal.expr' ctx e1 e2 ty in
+      let s = 
+        match v with
+        | None -> "=="
+        | Some (e1', e2') -> "!="
+      in
+      Format.printf "@[<hov>%t@]\n    %s\n@[<hov>%t@]\n"
+        (TT.print_expr ~penv:(Context.penv ctx) e1)
+        s
+        (TT.print_expr ~penv:(Context.penv ctx) e2) ;
+      let _ = 
+        match v with
+        | None -> ()
+        | Some (e1', e2') ->
+          Format.printf "Because of\n@[<hov>%t@]\n    !=\n@[<hov>%t@]\n"
+          (TT.print_expr ~penv:(Context.penv ctx) e1')
+          (TT.print_expr ~penv:(Context.penv ctx) e2') ;
+      in
+      ctx
 
   | Syntax.TopAxiom (x, ty) ->
      let ty = check_ty ctx ty in

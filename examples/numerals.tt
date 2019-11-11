@@ -5,9 +5,14 @@ Definition ( + ) := (fun (m n : Nat) => Plus m n)
        : Nat -> Nat -> Nat.
 Definition nat_ind := (fun (P : Nat -> Type) (a : P Z)
        (f : Π (n : Nat), P n -> P (Suc n)) (n : Nat) => NatInd P a f n).
+Definition time_nat_ind := (fun (k : Nat) (P : Nat -> Type) (a : P Z)
+       (f : Π (n : Nat), P n -> P (Suc n)) (n : Nat) => TimeNatInd k P a f n).
 Definition nat_rec := (fun (A : Type) (a : A) (f : A -> A)
        => nat_ind (fun (_ : Nat) => A) a (fun (_ : Nat) => f))
        : Π (A : Type), A -> (A -> A) -> Nat -> A.
+Definition time_nat_rec := (fun (k : Nat) (A : Type) (a : A) (f : A -> A)
+       => time_nat_ind k (fun (_ : Nat) => A) a (fun (_ : Nat) => f))
+       : Nat -> Π (A : Type), A -> (A -> A) -> Nat -> Comp Nat.
 Definition nat_rec2 := (fun (A : Type) (a : A) (f : Nat -> A -> A)
        => nat_ind (fun (_ : Nat) => A) a (f))
        : Π (A : Type), A -> (Nat -> A -> A) -> Nat -> A.

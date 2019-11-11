@@ -665,3 +665,216 @@ and spine ctx (e1, sp1) (e2, sp2) =
     fold ty sp1 sp2
   end
 
+let combine r1 r2 = 
+  match r1 with
+  | None -> r2
+  | Some _ -> r1
+
+let rec combine_all r1 rs =
+  match r1 with
+  | None -> 
+    begin
+      match rs with
+      | [] -> r1
+      | r2 :: rs -> combine_all r2 rs
+    end
+  | Some _ -> r1
+
+let rec expr' ctx e1 e2 ty =
+  (* short-circuit *)
+  if (e1 == e2)
+  then None
+  else
+  begin
+    (* The type directed phase *)
+    let TT.Ty ty' = norm_ty ~strategy:WHNF ctx ty in
+    match  ty' with
+
+    | TT.Prod ((x, t), u) ->
+      (* Apply function extensionality. *)
+      let x' = TT.new_atom x in
+      let ctx = Context.extend_ident x' t ctx
+      and e1 = TT.Apply (e1, TT.Atom x')
+      and e2 = TT.Apply (e2, TT.Atom x')
+      and u = TT.unabstract_ty x' u in
+      expr' ctx e1 e2 u
+
+    | TT.Type
+    | TT.Nat
+    | TT.Apply _
+    | TT.Bound _
+    | TT.NatInd _
+    | TT.Comp _
+    | TT.Eval _
+    | TT.Eq _
+    | TT.EqInd _
+    | TT.Atom _ ->
+      (* Type-directed phase is done, we compare normal forms. *)
+      let e1 = norm_expr ~strategy:WHNF ctx e1
+      and e2 = norm_expr ~strategy:WHNF ctx e2 in
+      expr_whnf' ctx e1 e2
+    
+    | TT.Zero
+    | TT.Suc _
+    | TT.Plus _
+    | TT.Time _
+    | TT.TimePlus _
+    | TT.TimeNatInd _
+    | TT.TimeEqInd _
+    | TT.Ret _
+    | TT.Fmap _
+    | TT.LiftA _
+    | TT.Refl _
+    | TT.Lambda _ ->
+      (* A type should never normalize to an abstraction *)
+      assert false
+  end
+
+and expr_whnf' ctx e1 e2 =
+  match e1, e2 with
+
+  | TT.Type, TT.Type -> None
+
+  | TT.Nat, TT.Nat -> None
+
+  | TT.Zero, TT.Zero -> None
+
+  | TT.Suc e1, TT.Suc e2 -> expr_whnf' ctx e1 e2
+
+  | TT.Plus (e11, e12), TT.Plus (e21, e22) ->
+    combine (expr_whnf' ctx e11 e21) (expr_whnf' ctx e12 e22)
+
+  | TT.TimePlus (e11, e12), TT.TimePlus (e21, e22) ->
+    combine (expr_whnf' ctx e11 e21) (expr_whnf' ctx e12 e22)
+
+  | TT.NatInd (e11, (e12, (e13, e14))), TT.NatInd (e21, (e22, (e23, e24))) ->
+    let e1 = expr' ctx e11 e21 (infer_TT ctx e11)
+    and e2 = expr' ctx e12 e22 (infer_TT ctx e12)
+    and e3 = expr' ctx e13 e23 (infer_TT ctx e13)
+    and e4 = expr_whnf' ctx e14 e24 in
+    combine_all e1 [e2 ;  e3 ; e4]
+
+  | TT.TimeNatInd (k1, (e11, (e12, (e13, e14)))), TT.TimeNatInd (k2, (e21, (e22, (e23, e24)))) ->
+    let k = expr_whnf' ctx k1 k2
+    and e1 = expr' ctx e11 e21 (infer_TT ctx e11)
+    and e2 = expr' ctx e12 e22 (infer_TT ctx e12)
+    and e3 = expr' ctx e13 e23 (infer_TT ctx e13)
+    and e4 = expr_whnf' ctx e14 e24 in
+    combine_all k [e1 ; e2 ;  e3 ; e4]
+
+  | TT.Comp e1, TT.Comp e2 -> expr_whnf' ctx e1 e2
+
+  | TT.Ret e1, TT.Ret e2 -> expr_whnf' ctx e1 e2
+
+  | TT.Fmap (e11, e12), TT.Fmap (e21, e22) ->
+    combine (expr' ctx e11 e21 (infer_TT ctx e11)) (expr_whnf' ctx e12 e22)
+
+  | TT.LiftA (e11, e12), TT.LiftA (e21, e22) ->
+    combine (expr_whnf' ctx e11 e21) (expr_whnf' ctx e12 e22)
+
+  | TT.Eval e1, TT.Eval e2 ->
+    expr_whnf' ctx e1 e2
+
+  | TT.Time e1, TT.Time e2 ->
+    expr_whnf' ctx e1 e2
+
+  | TT.Eq (e11, e12), TT.Eq (e21, e22) ->
+    combine
+      (expr' ctx e11 e21 (infer_TT ctx e11))
+      (expr' ctx e12 e22 (infer_TT ctx e12))
+
+  | TT.EqInd (e11, (e12, (e13, (e14, e15)))), TT.EqInd (e21, (e22, (e23, (e24, e25)))) ->
+    let e1 = expr' ctx e11 e21 (infer_TT ctx e11)
+    and e2 = expr' ctx e12 e22 (infer_TT ctx e12)
+    and e3 = expr' ctx e13 e23 (infer_TT ctx e13)
+    and e4 = expr' ctx e14 e24 (infer_TT ctx e14)
+    and e5 = expr_whnf' ctx e15 e25 in
+    combine_all e1 [e2 ; e3 ; e4 ; e5]
+
+  | TT.TimeEqInd (k1, (e11, (e12, (e13, (e14, e15))))), TT.TimeEqInd (k2, (e21, (e22, (e23, (e24, e25))))) ->
+    let k = expr_whnf' ctx k1 k2
+    and e1 = expr' ctx e11 e21 (infer_TT ctx e11)
+    and e2 = expr' ctx e12 e22 (infer_TT ctx e12)
+    and e3 = expr' ctx e13 e23 (infer_TT ctx e13)
+    and e4 = expr' ctx e14 e24 (infer_TT ctx e14)
+    and e5 = expr_whnf' ctx e15 e25 in
+    combine_all k [e1 ; e2 ; e3 ; e4 ; e5]
+
+  | TT.Refl e1, TT.Refl e2 -> expr_whnf' ctx e1 e2
+
+  | TT.Bound k1, TT.Bound k2 ->
+    (* We should never be in a situation where we compare bound variables,
+       as that would mean that we forgot to unabstract a lambda or a product. *)
+    assert false
+
+  | TT.Atom x, TT.Atom y ->
+    if x = y
+    then None
+    else Some (e1, e2)
+
+  | TT.Prod ((x, t1), u1), TT.Prod ((_, t2), u2) ->
+    let c1 = ty' ctx t1 t2 in
+    begin
+      match c1 with
+      | None ->
+        begin
+          let x' = TT.new_atom x in
+          let ctx = Context.extend_ident x' t1 ctx
+          and u1 = TT.unabstract_ty x' u1
+          and u2 = TT.unabstract_ty x' u2 in
+          ty' ctx u1 u2
+        end
+      | Some _ -> c1
+    end
+
+  | TT.Lambda ((x, t1), e1), TT.Lambda ((_, t2), e2)  ->
+    (* We should never have to compare two lambdas, as that would mean that the
+       type-directed phase did not figure out that these have product types. *)
+    assert false
+
+  | TT.Apply (e11, e12), TT.Apply (e21, e22) ->
+    let rec collect sp1 sp2 e1 e2 =
+      match e1, e2 with
+      | TT.Apply (e11, e12), TT.Apply (e21, e22) ->
+        collect (e12 :: sp1) (e22 :: sp2) e11 e21
+      | _, _ -> ((e1, sp1), (e2, sp2))
+    in
+    begin
+      let ((e1, sp1), (e2, sp2)) = collect [e12] [e22] e11 e21 in
+      spine' ctx (e1, sp1) (e2, sp2)
+    end
+
+  | (TT.Type | TT.Nat | TT.Zero | TT.Suc _ | TT.Plus _ | TT.TimePlus _ | TT.NatInd _ | TT.TimeNatInd _
+    | TT.Bound _ | TT.Atom _ | TT.Prod _ | TT.Lambda _ | TT.Apply _ | TT.Comp _ | TT.Ret _ | TT.Fmap _
+    | TT.LiftA _ | TT.Eval _ | TT.Time _ | TT.Eq _ | TT.Refl _ | TT.EqInd _ | TT.TimeEqInd _), _ ->
+    Some (e1, e2)
+
+and ty' ctx (TT.Ty ty1) (TT.Ty ty2) =
+  expr' ctx ty1 ty2 TT.ty_Type
+
+and spine' ctx (e1, sp1) (e2, sp2) =
+  if e1 <> e2
+  then Some (e1, e2)
+  else
+  begin
+    let rec fold ty sp1 sp2 =
+      match as_prod ctx ty with
+      | None -> assert false
+      | Some ((x, t), u) ->
+        begin
+          match sp1, sp2 with
+          | [e1], [e2] -> expr' ctx e1 e2 t
+          | e1 :: sp1, e2 :: sp2 ->
+            combine (expr' ctx e1 e2 t)
+            begin
+              let u = TT.instantiate_ty e1 u in
+              fold u sp1 sp2
+            end
+          | _, _ ->
+            (* We should never be here, as the lengths of the spines should match. *)
+            assert false
+        end
+    in
+    let ty = infer_TT ctx e1 in
+    fold ty sp1 sp2
+  end

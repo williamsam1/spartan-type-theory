@@ -106,6 +106,14 @@ let rec expr ctx {Location.data=e; Location.loc=loc} =
       and e4 = expr ctx e4 in
       Location.locate ~loc (Syntax.NatInd (e1, (e2, (e3, e4))))
 
+    | Input.TimeNatInd (e1, (e2, (e3, (e4, e5)))) ->
+      let e1 = expr ctx e1
+      and e2 = expr ctx e2
+      and e3 = expr ctx e3
+      and e4 = expr ctx e4
+      and e5 = expr ctx e5 in
+      Location.locate ~loc (Syntax.TimeNatInd (e1, (e2, (e3, (e4, e5)))))
+
     | Input.Ascribe (e, t) ->
        let e = expr ctx e
        and t = ty ctx t in
@@ -238,6 +246,11 @@ let toplevel' ctx = function
     | Input.TopEval e ->
        let e = expr ctx e in
        ctx, Syntax.TopEval e
+
+    | Input.TopCompare (e1, e2) ->
+       let e1 = expr ctx e1
+       and e2 = expr ctx e2 in
+       ctx, Syntax.TopCompare (e1, e2)
 
     | Input.TopAxiom (x, t) ->
        let t = ty ctx t in

@@ -23,6 +23,7 @@
 %token <int> NUMERAL
 %token PLUS
 %token NATIND
+%token TIMENATIND
 %token COMP
 %token RET
 %token FMAP
@@ -40,6 +41,7 @@
 %token DEFINITION
 %token CHECK
 %token EVAL
+%token COMPARE
 %token AXIOM
 
 (* End of input token *)
@@ -72,11 +74,12 @@ commandline:
 (* Things that can be defined on toplevel. *)
 topcomp: mark_location(plain_topcomp) { $1 }
 plain_topcomp:
-  | LOAD fn=QUOTED_STRING                { Input.TopLoad fn }
-  | DEFINITION x=var_name COLONEQ e=term { Input.TopDefinition (x, e) }
-  | CHECK e=term                         { Input.TopCheck e }
-  | EVAL e=term                          { Input.TopEval e }
-  | AXIOM x=var_name COLON e=term        { Input.TopAxiom (x, e) }
+  | LOAD fn=QUOTED_STRING                 { Input.TopLoad fn }
+  | DEFINITION x=var_name COLONEQ e=term  { Input.TopDefinition (x, e) }
+  | CHECK e=term                          { Input.TopCheck e }
+  | EVAL e=term                           { Input.TopEval e }
+  | COMPARE e1=prefix_term e2=prefix_term { Input.TopCompare (e1, e2) }
+  | AXIOM x=var_name COLON e=term         { Input.TopAxiom (x, e) }
 
 (* Main syntax tree *)
 term : mark_location(plain_term) { $1 }
@@ -105,6 +108,9 @@ plain_COMP_term:
   | PLUS e1=prefix_term e2=prefix_term    { Input.Plus (e1, e2) }
   | NATIND e1=prefix_term e2=prefix_term
     	e3=prefix_term e4=prefix_term       { Input.NatInd (e1, (e2, (e3, e4))) }
+  | TIMENATIND e1=prefix_term e2=prefix_term
+      e3=prefix_term e4=prefix_term
+      e5=prefix_term                      { Input.TimeNatInd (e1, (e2, (e3, (e4, e5)))) }
   | COMP e1=prefix_term                   { Input.Comp e1 }
   | RET e1=prefix_term                    { Input.Ret e1 }
   | FMAP e1=prefix_term e2=prefix_term    { Input.Fmap (e1, e2) }
