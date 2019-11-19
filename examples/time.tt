@@ -161,3 +161,26 @@ f(0,0)   == 2
 f(m+1,n) == 5 + n + f(m,n)
 f(m,n+1) == m + f(m,n)
 *)
+
+
+Definition appendTime := (fun (m n : List) => CompEval (Time (LiftA (Fmap ( @ ) (Ret m)) (Ret n))))
+    : List -> List -> Nat.
+Definition appendTimeExplicit := (fun (m n : List) => 2 + )
+	: List -> List -> Nat. 
+(**
+f(n)   == 2 + n
+
+f(0)   == 2
+f(n+1) == 1 + f(n)
+*)
+
+Definition lengthTime := (fun (m : List) => CompEval (Time (Fmap ( len ) (Ret m))))
+    : List -> Nat.
+Definition lengthTimeExplicit := (fun (m : List) => 1 + )
+	: List -> Nat. 
+(**
+f(m, n)   == 1 + m
+
+f(0, n)   == 1
+f(m+1, n) == 1 + f(m)
+*)

@@ -295,6 +295,7 @@ and time_expr ~strategy ctx e =
 
   | TT.Length (e1) -> TT.Ret (eval_length e1)
 
+  (* Fix Timing for Map later *)
   | TT.Map (f, e) -> TT.TimePlus (time_expr ~strategy ctx f,  TT.Ret (eval_length e))
 
   | TT.Nat -> TT.Ret TT.Zero
