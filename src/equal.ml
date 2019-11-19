@@ -18,6 +18,20 @@ let rec eval_plus m n =
   | TT.Suc m -> TT.Suc (eval_plus m n)
   | _ -> TT.Plus (m, n)
 
+(** Normalize an append. *)
+let rec eval_append m n =
+  match m with
+  | TT.Nil -> n
+  | TT.Cons (x, l1) -> TT.Cons (x, eval_append l1 n)
+  | _ -> TT.Append (m, n)
+
+(** Normalize an length. *)
+let rec eval_length m =
+  match m with
+  | TT.Nil -> TT.Zero
+  | TT.Cons (x, l1) -> TT.Suc (eval_length l1)
+  | _ -> TT.Length m
+
 (** Normalize an expression. *)
 let rec norm_expr ~strategy ctx e =
   match e with
@@ -52,6 +66,29 @@ let rec norm_expr ~strategy ctx e =
         norm_expr ~strategy ctx e'
       | _ -> TT.Apply (e1, e2)
     end
+  
+  | TT.List -> e
+
+  | TT.Nil -> e
+
+  | TT.Cons (e1, e2) -> 
+    let m = norm_expr ~strategy ctx e1
+    and n = norm_expr ~strategy ctx e2 in
+    TT.Cons (m, n)
+  
+  | TT.Append (e1, e2) -> 
+    let m = norm_expr ~strategy ctx e1
+    and n = norm_expr ~strategy ctx e2 in
+    eval_append m n
+  
+  | TT.Map (e1, e2) -> 
+    let m = norm_expr ~strategy ctx e1
+    and n = norm_expr ~strategy ctx e2 in
+    TT.Map (m, n)
+
+  | TT.Length (e1) -> 
+    let m = norm_expr ~strategy ctx e1 in
+    eval_length m
 
   | TT.Nat -> e
 
@@ -247,6 +284,18 @@ and time_expr ~strategy ctx e =
     let (e, sp) = collect_spine [e2'] e1' in
     let t3 = time_spine ~strategy ctx e sp in
     TT.multi_time_plus t1 [t2; t3]
+  
+  | TT.List -> TT.Ret TT.Zero
+
+  | TT.Nil -> TT.Ret TT.Zero
+
+  | TT.Cons (e1, e2) -> time_expr ~strategy ctx e2
+
+  | TT.Append (e1, e2) -> TT.Ret (eval_length e1)
+
+  | TT.Length (e1) -> TT.Ret (eval_length e1)
+
+  | TT.Map (f, e) -> TT.TimePlus (time_expr ~strategy ctx f,  TT.Ret (eval_length e))
 
   | TT.Nat -> TT.Ret TT.Zero
 
@@ -405,6 +454,18 @@ let rec infer_TT ctx e =
           TT.instantiate_ty e2 u
      end
 
+  | TT.List -> TT.ty_Type
+
+  | TT.Nil -> TT.ty_List
+
+  | TT.Cons _ -> TT.ty_List
+
+  | TT.Append _ -> TT.ty_List
+
+  | TT.Length _ -> TT.ty_Nat
+
+  | TT.Map _ -> TT.ty_List
+
   | TT.Nat -> TT.ty_Type
 
   | TT.Zero -> TT.ty_Nat
@@ -493,6 +554,7 @@ let rec expr ctx e1 e2 ty =
 
     | TT.Type
     | TT.Nat
+    | TT.List
     | TT.Apply _
     | TT.Bound _
     | TT.NatInd _
@@ -508,6 +570,11 @@ let rec expr ctx e1 e2 ty =
     
     | TT.Zero
     | TT.Suc _
+    | TT.Nil
+    | TT.Cons _
+    | TT.Append _
+    | TT.Length _
+    | TT.Map _
     | TT.Plus _
     | TT.Time _
     | TT.TimePlus _
@@ -527,6 +594,22 @@ and expr_whnf ctx e1 e2 =
   match e1, e2 with
 
   | TT.Type, TT.Type -> true
+
+  | TT.List, TT.List -> true
+
+  | TT.Nil, TT.Nil -> true
+
+  | TT.Cons (e11, e12), TT.Cons (e21, e22) ->
+    expr_whnf ctx e11 e21 && expr_whnf ctx e12 e22
+
+  | TT.Append (e11, e12), TT.Append (e21, e22) ->
+    expr_whnf ctx e11 e21 && expr_whnf ctx e12 e22
+
+  | TT.Map (e11, e12), TT.Map (e21, e22) ->
+    expr_whnf ctx e11 e21 && expr_whnf ctx e12 e22
+
+  | TT.Length (e1), TT.Length (e2) ->
+    expr_whnf ctx e1 e2
 
   | TT.Nat, TT.Nat -> true
 
@@ -627,7 +710,8 @@ and expr_whnf ctx e1 e2 =
       spine ctx (e1, sp1) (e2, sp2)
     end
 
-  | (TT.Type | TT.Nat | TT.Zero | TT.Suc _ | TT.Plus _ | TT.TimePlus _ | TT.NatInd _ | TT.TimeNatInd _
+  | (TT.Type | TT. List | TT.Nil | TT.Cons _ | TT.Append _ | TT.Length _ | TT.Map _
+    | TT.Nat | TT.Zero | TT.Suc _ | TT.Plus _ | TT.TimePlus _ | TT.NatInd _ | TT.TimeNatInd _
     | TT.Bound _ | TT.Atom _ | TT.Prod _ | TT.Lambda _ | TT.Apply _ | TT.Comp _ | TT.Ret _ | TT.Fmap _
     | TT.LiftA _ | TT.Eval _ | TT.Time _ | TT.Eq _ | TT.Refl _ | TT.EqInd _ | TT.TimeEqInd _), _ ->
     false
@@ -701,6 +785,7 @@ let rec expr' ctx e1 e2 ty =
 
     | TT.Type
     | TT.Nat
+    | TT.List
     | TT.Apply _
     | TT.Bound _
     | TT.NatInd _
@@ -714,9 +799,14 @@ let rec expr' ctx e1 e2 ty =
       and e2 = norm_expr ~strategy:WHNF ctx e2 in
       expr_whnf' ctx e1 e2
     
+    | TT.Nil
+    | TT.Cons _
     | TT.Zero
     | TT.Suc _
     | TT.Plus _
+    | TT.Append _
+    | TT.Length _
+    | TT.Map _
     | TT.Time _
     | TT.TimePlus _
     | TT.TimeNatInd _
@@ -734,6 +824,21 @@ and expr_whnf' ctx e1 e2 =
   match e1, e2 with
 
   | TT.Type, TT.Type -> None
+
+  | TT.List, TT.List -> None
+
+  | TT.Nil, TT.Nil -> None
+
+  | TT.Cons (e11, e12), TT.Cons (e21, e22) ->
+    combine (expr_whnf' ctx e11 e21) (expr_whnf' ctx e12 e22)
+  
+  | TT.Append (e11, e12), TT.Append (e21, e22) ->
+    combine (expr_whnf' ctx e11 e21) (expr_whnf' ctx e12 e22)
+
+  | TT.Map (e11, e12), TT.Map (e21, e22) ->
+    combine (expr_whnf' ctx e11 e21) (expr_whnf' ctx e12 e22)
+
+  | TT.Length (e1), TT.Length (e2) -> expr_whnf' ctx e1 e2
 
   | TT.Nat, TT.Nat -> None
 
@@ -844,7 +949,8 @@ and expr_whnf' ctx e1 e2 =
       spine' ctx (e1, sp1) (e2, sp2)
     end
 
-  | (TT.Type | TT.Nat | TT.Zero | TT.Suc _ | TT.Plus _ | TT.TimePlus _ | TT.NatInd _ | TT.TimeNatInd _
+  | (TT.Type | TT. List | TT.Nil | TT.Cons _ | TT.Append _ | TT.Length _ | TT.Map _
+    | TT.Nat | TT.Zero | TT.Suc _ | TT.Plus _ | TT.TimePlus _ | TT.NatInd _ | TT.TimeNatInd _
     | TT.Bound _ | TT.Atom _ | TT.Prod _ | TT.Lambda _ | TT.Apply _ | TT.Comp _ | TT.Ret _ | TT.Fmap _
     | TT.LiftA _ | TT.Eval _ | TT.Time _ | TT.Eq _ | TT.Refl _ | TT.EqInd _ | TT.TimeEqInd _), _ ->
     Some (e1, e2)

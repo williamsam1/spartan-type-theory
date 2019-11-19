@@ -91,6 +91,29 @@ let rec infer ctx {Location.data=e'; loc} =
      let t = check_ty ctx t in
      let e = check ctx e t in
      e, t
+  
+  | Syntax.List -> TT.List, TT.ty_Type
+
+  | Syntax.Nil -> TT.Nil, TT.ty_List
+
+  | Syntax.Cons (e1, e2) ->
+    let e1 = check ctx e1 TT.ty_Nat
+    and e2 = check ctx e2 TT.ty_List in
+    TT.Cons (e1, e2), TT.ty_List
+  
+  | Syntax.Append (e1, e2) ->
+    let e1 = check ctx e1 TT.ty_List
+    and e2 = check ctx e2 TT.ty_List in
+    TT.Append (e1, e2), TT.ty_List
+
+  | Syntax.Length e1 ->
+    let e1 = check ctx e1 TT.ty_List in
+    TT.Length e1, TT.ty_Nat
+
+  | Syntax.Map (f, e) ->
+    let e = check ctx e TT.ty_List
+    and f = check ctx f (TT.Ty (TT.Apply (TT.Nat, TT.Nat))) in
+    TT.Map (f, e), TT.ty_List
 
   | Syntax.Nat -> TT.Nat, TT.ty_Type
 
@@ -245,6 +268,12 @@ and check ctx ({Location.data=e'; loc} as e) ty =
   | Syntax.Prod _
   | Syntax.Var _
   | Syntax.Type
+  | Syntax.List
+  | Syntax.Nil
+  | Syntax.Cons _
+  | Syntax.Append _
+  | Syntax.Length _
+  | Syntax.Map _
   | Syntax.Nat
   | Syntax.Zero
   | Syntax.Suc _

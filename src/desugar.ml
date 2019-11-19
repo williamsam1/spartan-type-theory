@@ -78,6 +78,29 @@ let rec expr ctx {Location.data=e; Location.loc=loc} =
        let e1 = expr ctx e1
        and e2 = expr ctx e2 in
        Location.locate ~loc (Syntax.Apply (e1, e2))
+    
+    | Input.List -> Location.locate ~loc Syntax.List
+
+    | Input.Nil -> Location.locate ~loc Syntax.Nil
+
+    | Input.Cons (e1, e2) ->
+      let e1 = expr ctx e1
+      and e2 = expr ctx e2 in
+      Location.locate ~loc (Syntax.Cons (e1, e2))
+    
+    | Input.Append (e1, e2) ->
+      let e1 = expr ctx e1
+      and e2 = expr ctx e2 in
+      Location.locate ~loc (Syntax.Append (e1, e2))
+
+    | Input.Map (e1, e2) ->
+      let e1 = expr ctx e1
+      and e2 = expr ctx e2 in
+      Location.locate ~loc (Syntax.Map (e1, e2))
+    
+    | Input.Length e ->
+      let e = expr ctx e in
+      Location.locate ~loc (Syntax.Length e)
 
     | Input.Nat -> Location.locate ~loc Syntax.Nat
 

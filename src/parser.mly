@@ -26,6 +26,12 @@
 %token PLUS
 %token NATIND
 %token TIMENATIND
+%token LIST
+%token NIL
+%token CONS
+%token LENGTH
+%token APPEND
+%token MAP
 %token COMP
 %token RET
 %token FMAP
@@ -128,6 +134,10 @@ plain_COMP_term:
   | e1=COMP_term e2=prefix_term           { Input.Apply (e1, e2) }
   | SUC e=prefix_term                     { Input.Suc e }
   | PLUS e1=prefix_term e2=prefix_term    { Input.Plus (e1, e2) }
+  | CONS e1=prefix_term e2=prefix_term    { Input.Cons (e1, e2) }
+  | APPEND e1=prefix_term e2=prefix_term  { Input.Append (e1, e2) }
+  | LENGTH e=prefix_term                  { Input.Length e}
+  | MAP e1=prefix_term e2=prefix_term     { Input.Map (e1, e2)}
   | NATIND e1=prefix_term e2=prefix_term
     	e3=prefix_term e4=prefix_term       { Input.NatInd (e1, (e2, (e3, e4))) }
   | TIMENATIND e1=prefix_term e2=prefix_term
@@ -159,6 +169,8 @@ plain_simple_term:
   | LPAREN e=plain_term RPAREN         { e }
   | TYPE                               { Input.Type }
   | NAT                                { Input.Nat }
+  | LIST                               { Input.List }
+  | NIL                                { Input.Nil  }
   | ZERO                               { Input.Zero }
   | x=var_name                         { Input.Var x }
   | i=NUMERAL                          { Input.Numeral i }

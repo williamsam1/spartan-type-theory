@@ -11,6 +11,12 @@ and expr' =
   | Apply of expr * expr
   | Arrow of expr * expr
   | Ascribe of expr * ty
+  | List
+  | Nil
+  | Cons of expr * expr
+  | Length of expr
+  | Map of expr * expr
+  | Append of expr * expr
   | Nat
   | Zero
   | Suc of expr

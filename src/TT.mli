@@ -17,6 +17,12 @@ type expr =
   | Prod of (Name.ident * ty) * ty (** dependent product *)
   | Lambda of (Name.ident * ty) * expr (** lambda abstraction *)
   | Apply of expr * expr (** Complication *)
+  | List (** list type *)
+  | Nil (** empty list *)
+  | Cons of expr * expr (** adding one element to a list *)
+  | Append of expr * expr
+  | Length of expr
+  | Map of expr * expr
   | Nat (** natural number type *)
   | Zero (** first natural number *)
   | Suc of expr (** successor natural numbers *)
@@ -46,6 +52,9 @@ val ty_Type : ty
 
 (** [Nat] as a type. *)
 val ty_Nat : ty
+
+(** [List] as a type. *)
+val ty_List : ty
 
 (** function type [a -> b] *)
 val ty_Fun : ty -> ty -> ty

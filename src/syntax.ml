@@ -12,6 +12,12 @@ and expr' =
   | Lambda of (Name.ident * ty option) * expr
   | Apply of expr * expr
   | Ascribe of expr * ty
+  | List 
+  | Nil 
+  | Cons of expr * expr 
+  | Append of expr * expr
+  | Length of expr
+  | Map of expr * expr
   | Nat
   | Zero
   | Suc of expr
@@ -73,6 +79,18 @@ and shift' n k = function
      let e = shift n k e
      and t = shift_ty n k t in
      Ascribe (e, t)
+  
+  | List -> List
+
+  | Nil -> Nil
+
+  | Cons (e1, e2) -> Cons (shift n k e1, shift n k e2)
+
+  | Map (e1, e2) -> Map (shift n k e1, shift n k e2)
+
+  | Append (e1, e2) -> Append (shift n k e1, shift n k e2)
+
+  | Length e -> Length (shift n k e)
 
   | Nat -> Nat
 

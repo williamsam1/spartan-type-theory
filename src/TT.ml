@@ -18,6 +18,12 @@ type expr =
   | Prod of (Name.ident * ty) * ty (** dependent product *)
   | Lambda of (Name.ident * ty) * expr (** lambda abstraction *)
   | Apply of expr * expr (** application *)
+  | List (** list type *)
+  | Nil (** empty list *)
+  | Cons of expr * expr (* adding one element to a list *)
+  | Append of expr * expr
+  | Length of expr
+  | Map of expr * expr
   | Nat (** natural number type *)
   | Zero (** first natural number *)
   | Suc of expr (** successor natural numbers *)
@@ -57,6 +63,9 @@ let ty_Type = Ty Type
 
 (** [Nat] as a type. *)
 let ty_Nat = Ty Nat
+
+(** [List] as a type. *)
+let ty_List = Ty List
 
 (** function type [a -> b] *)
 let ty_Fun a b = Ty (Prod ((Name.anonymous (), a), b))
@@ -106,6 +115,29 @@ let rec instantiate ?(lvl=0) e e' =
     let e1 = instantiate ~lvl e e1
     and e2 = instantiate ~lvl e e2 in
     Apply (e1, e2)
+
+  | List -> e'
+
+  | Nil -> e'
+
+  | Cons (e1, e2) ->
+    let e1 = instantiate ~lvl e e1
+    and e2 = instantiate ~lvl e e2 in
+    Cons (e1, e2)
+
+  | Map (e1, e2) ->
+    let e1 = instantiate ~lvl e e1
+    and e2 = instantiate ~lvl e e2 in
+    Map (e1, e2)
+
+  | Append (e1, e2) ->
+    let e1 = instantiate ~lvl e e1
+    and e2 = instantiate ~lvl e e2 in
+    Append (e1, e2)
+
+  | Length e1 ->
+    let e1 = instantiate ~lvl e e1 in
+    Length e1
 
   | Nat -> e'
 
@@ -221,6 +253,29 @@ let rec abstract ?(lvl=0) x e =
     and e2 = abstract ~lvl x e2 in
     Apply (e1, e2)
 
+  | List -> e
+
+  | Nil -> e
+
+  | Cons (e1, e2) -> 
+    let e1 = abstract ~lvl x e1
+    and e2 = abstract ~lvl x e2 in
+    Cons (e1, e2)
+  
+  | Map (e1, e2) ->
+    let e1 = abstract ~lvl x e1
+    and e2 = abstract ~lvl x e2 in
+    Map (e1, e2)
+
+  | Append (e1, e2) ->
+    let e1 = abstract ~lvl x e1
+    and e2 = abstract ~lvl x e2 in
+    Append (e1, e2)
+
+  | Length e1 ->
+    let e1 = abstract ~lvl x e1 in
+    Length e1 
+
   | Nat -> e
 
   | Zero -> e
@@ -324,6 +379,12 @@ let rec occurs k = function
   | Prod ((_, t), u) -> occurs_ty k t || occurs_ty (k+1) u
   | Lambda ((_, t), e) -> occurs_ty k t || occurs (k+1) e
   | Apply (e1, e2) -> occurs k e1 || occurs k e2
+  | List -> false
+  | Nil -> false
+  | Cons (e1, e2) -> occurs k e1 || occurs k e2
+  | Append (e1, e2) -> occurs k e1 || occurs k e2
+  | Map (e1, e2) -> occurs k e1 || occurs k e2
+  | Length e1 -> occurs k e1
   | Nat -> false
   | Zero -> false
   | Suc e1 -> occurs k e1
@@ -393,6 +454,12 @@ let head e =
   | Prod _ -> "Prod"
   | Lambda _ -> "Lambda"
   | Apply _ -> "Apply"
+  | List -> "List"
+  | Nil -> "Nil"
+  | Cons _ -> "Cons"
+  | Append _ -> "Append"
+  | Length _ -> "Length"
+  | Map _ -> "Map"
   | Nat -> "Nat"
   | Zero -> "Zero"
   | Suc _ -> "Suc"
@@ -429,6 +496,29 @@ and print_expr' ~penv ?max_level e ppf =
       | Apply (e1, e2) -> print_app ?max_level ~penv e1 e2 ppf
 
       | Prod ((x, u), t) -> print_prod ?max_level ~penv ((x, u), t) ppf
+
+      | List -> Format.fprintf ppf "List"
+      
+      | Nil -> Format.fprintf ppf "[]"
+
+      | Cons (e1, e2) ->
+        Format.fprintf ppf "[%t, %t]"
+        (print_expr ~max_level:Level.eq_left ~penv e1)
+        (print_expr ~max_level:Level.eq_right ~penv e2)
+      
+      | Map (e1, e2) ->
+        Format.fprintf ppf "Map (%t) %t"
+        (print_expr ?max_level ~penv e1)
+        (print_expr ?max_level ~penv e2)
+
+      | Append (e1, e2) ->
+        Format.fprintf ppf "%t @ %t"
+        (print_expr ?max_level ~penv e1)
+        (print_expr ?max_level ~penv e2)
+      
+      | Length (e1) ->
+        Format.fprintf ppf "Length(%t)"
+        (print_expr ?max_level ~penv e1)
 
       | Nat -> Format.fprintf ppf "Nat"
       

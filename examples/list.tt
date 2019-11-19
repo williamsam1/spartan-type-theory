@@ -1,0 +1,19 @@
+Load "examples/numerals.tt".
+Definition ( @ ) := (fun (m n : List) => Append m n)
+        : List -> List -> List.
+Definition len := (fun (m : List) => Length m)
+        : List -> Nat. 
+
+Definition appendTime := (fun (m n : List) => CompEval (Time (LiftA (Fmap ( @ ) (Ret m)) (Ret n))))
+    : List -> List -> Nat.
+Definition lengthTime := (fun (m : List) => CompEval (Time (Fmap ( len ) (Ret m))))
+    : List -> Nat.
+
+Definition x := Cons (1) (Cons (2) (Cons (3) Nil)).
+Definition z := Nil.
+Definition y := Cons (1) (Cons (2) (Cons (3) Nil)).
+
+Eval (x @ y).
+Eval (appendTime z y).
+Eval (len(x @ y)).
+Eval (lengthTime x).

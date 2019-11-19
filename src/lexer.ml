@@ -17,6 +17,12 @@ let reserved = [
   ("Π", Parser.PROD) ;
   ("∏", Parser.PROD) ;
   ("Type", Parser.TYPE) ;
+  ("List", Parser.LIST) ;
+  ("Nil", Parser.NIL) ;
+  ("Cons", Parser.CONS) ;
+  ("Length", Parser.LENGTH) ;
+  ("Map", Parser.MAP) ;
+  ("Append", Parser.APPEND) ;
   ("Nat", Parser.NAT) ;
   ("Zero", Parser.ZERO) ;
   ("Suc", Parser.SUC) ;
