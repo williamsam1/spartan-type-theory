@@ -1,5 +1,0 @@
-Definition Bool := (Π (A : Type), A -> A -> A) : Type.
-Definition true := (fun (A: Type) (x y : A) => x) : Bool.
-Definition false := (fun (A: Type) (x y : A) => y) : Bool.
-Definition not := (fun (p : Bool ) => p true false) : Bool -> Bool.
-
