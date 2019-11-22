@@ -20,9 +20,9 @@ type expr =
   | List (** list type *)
   | Nil (** empty list *)
   | Cons of expr * expr (** adding one element to a list *)
-  | Append of expr * expr
-  | Length of expr
-  | Map of expr * expr
+  | Append of expr * expr (** adding a list at the end of another list *)
+  | Length of expr (** length of a list *)
+  | Map of expr * expr (** map a function onto a list *)
   | Nat (** natural number type *)
   | Zero (** first natural number *)
   | Suc of expr (** successor natural numbers *)

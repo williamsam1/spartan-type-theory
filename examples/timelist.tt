@@ -78,4 +78,4 @@ Eval(lengthTimeExplicit l1).
 Eval(lengthTimeExplicit l2).
 Eval(lengthTimeExplicit l3).
 
-(** Beginning of Length Time Analysis *)
+(** End of Length Time Analysis *)
