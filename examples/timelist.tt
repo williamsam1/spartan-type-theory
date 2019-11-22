@@ -1,0 +1,81 @@
+Load "examples/lemmas.tt".
+
+Definition l1 := cons 1 nil.
+Definition l2 := cons 1 (cons 2 nil).
+Definition l3 := cons 1 (cons 2 (cons 3 nil)).
+Definition l4 := cons 1 (cons 2 (cons 3 (cons 4 nil))).
+Definition l5 := cons 1 (cons 2 (cons 3 (cons 4 (cons 5 nil)))).
+Definition l10 := l5 @ l5.
+
+(** Time to evaluate cons function application *)
+Definition Cons_time := (fun (n : Nat) (l : List) => CompEval (Time (LiftA (Fmap cons (Ret n)) (Ret l))))
+    : Nat -> List -> Nat.
+(** f Nil == 1 *)
+(** Definition Cons_time_nil := (Refl (Nil))
+    : Eq (Cons_time Z Nil) (S Z).
+(** f (Cons n l) == 1 *)
+Definition Cons_time_cons := (fun (n : Nat) => (Refl (S Z)))
+    : Π (n : Nat) (l : List), Eq (Cons_time n l) (S Z).
+(** f (l) == 1 *)
+Definition Cons_time_eq := (fun (n : Nat) =>
+    nat_ind (fun (n : Nat) => Eq (S_time n) (S Z))
+    S_time_0
+    (fun (n : Nat) (_ : Eq (S_time n) (S Z)) => S_time_S n):
+    n)
+    : Π (n : Nat), Eq (S_time n) (S Z). *)
+
+
+(** Beginning of Append Time Analysis *)
+
+Definition appendTime := (fun (m n : List) => CompEval (Time (LiftA (Fmap ( @ ) (Ret m)) (Ret n))))
+    : List -> List -> Nat.
+Definition appendTimeExplicit := (fun (m n : List) => 2 + len(m))
+	: List -> List -> Nat. 
+
+
+(**
+f(m, n)   == 2 + m
+
+f(0, n)   == 2
+f(m+1, n) == 2 + f(m)
+*)
+
+(** Tests *)
+
+Eval(appendTime Nil l1).
+Eval(appendTime l1 l1).
+Eval(appendTime l2 l3).
+Eval(appendTime l2 l1).
+Eval(appendTimeExplicit Nil l1).
+Eval(appendTimeExplicit l1 l1).
+Eval(appendTimeExplicit l2 l3).
+Eval(appendTimeExplicit l2 l1).
+
+(** End of Append Time Analysis *)
+
+(** Beginning of Length Time Analysis *)
+
+Definition lengthTime := (fun (m : List) => CompEval (Time (Fmap ( len ) (Ret m))))
+    : List -> Nat.
+Definition lengthTimeExplicit := (fun (m : List) => 1 + len (m))
+	: List -> Nat. 
+
+(**
+f(n)   == 1 + n
+
+f(0)   == 1
+f(n+1) == 1 + f(n)
+*)
+
+(** Tests *)
+
+Eval(lengthTime Nil).
+Eval(lengthTime l1).
+Eval(lengthTime l2).
+Eval(lengthTime l3).
+Eval(lengthTimeExplicit Nil).
+Eval(lengthTimeExplicit l1).
+Eval(lengthTimeExplicit l2).
+Eval(lengthTimeExplicit l3).
+
+(** Beginning of Length Time Analysis *)

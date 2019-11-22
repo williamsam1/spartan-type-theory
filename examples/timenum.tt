@@ -1,17 +1,6 @@
 Load "examples/lemmas.tt".
 
-Definition fmap := (fun (A : Type) (B : A -> Type)
-    (f : Π (x : A), B x) (a : Comp A) => Fmap f a)
-    : Π (A : Type) (B : A -> Type),
-        (Π (x : A), B x) -> Π (a : Comp A), Comp (B (CompEval a)).
-Definition liftA := (fun (A : Type) (B : A -> Type)
-    (f : Comp (Π (x : A), B x)) (a : Comp A) => LiftA f a)
-    : Π (A : Type) (B : A -> Type),
-        Comp (Π (x : A), B x) -> Π (a : Comp A), Comp (B (CompEval a)).
-Definition ret := (fun (A : Type) (a : A) => Ret a)
-	: Π (A : Type), A -> Comp A.
-Definition eval := (fun (A : Type) (a : Comp A) => CompEval a)
-	: Π (A : Type), Comp A -> A.
+(** Beginning of Plus Time Analysis *)
 
 (** Time to evaluate successor function application *)
 Definition S_time := (fun (n : Nat) => CompEval (Time (Fmap S (Ret n))))
@@ -73,6 +62,10 @@ Definition plusTimeSecondEq :=
 (** f m n == m + 2 *)
 Definition plusTimeEq := (irrelev Nat Nat Nat plusTime plusTimeSimpl Z plusTimeSecondEq plusTimeSimplEq)
     : Π (m n : Nat), Eq (plusTimeSimpl m) (plusTime m n).
+
+(** End of Plus Time Analysis *)
+
+(** Beginning of Multiply Time Analysis *)
 
 (** Time to evaluate recursively defined multiplication *)
 Definition multTime := (fun (m n : Nat) => CompEval (Time (LiftA (Fmap ( * ) (Ret m)) (Ret n)))) 
@@ -162,25 +155,4 @@ f(m+1,n) == 5 + n + f(m,n)
 f(m,n+1) == m + f(m,n)
 *)
 
-
-Definition appendTime := (fun (m n : List) => CompEval (Time (LiftA (Fmap ( @ ) (Ret m)) (Ret n))))
-    : List -> List -> Nat.
-Definition appendTimeExplicit := (fun (m n : List) => 2 + )
-	: List -> List -> Nat. 
-(**
-f(n)   == 2 + n
-
-f(0)   == 2
-f(n+1) == 1 + f(n)
-*)
-
-Definition lengthTime := (fun (m : List) => CompEval (Time (Fmap ( len ) (Ret m))))
-    : List -> Nat.
-Definition lengthTimeExplicit := (fun (m : List) => 1 + )
-	: List -> Nat. 
-(**
-f(m, n)   == 1 + m
-
-f(0, n)   == 1
-f(m+1, n) == 1 + f(m)
-*)
+(** End of Multiply Time Analysis *)

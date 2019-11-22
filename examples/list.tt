@@ -1,4 +1,3 @@
-Load "examples/numerals.tt".
 Definition nil := Nil : List.
 Definition cons := (fun (n : Nat) (l : List) => Cons n l)
         : Nat -> List -> List.
@@ -6,12 +5,3 @@ Definition ( @ ) := (fun (m n : List) => Append m n)
         : List -> List -> List.
 Definition len := (fun (m : List) => Length m)
         : List -> Nat. 
-
-
-Definition oneElement := Cons 1 nil.
-Definition twoElements := Cons 1 (Cons 2 nil).
-Definition threeElements := Cons 1 (Cons 2 (Cons 3 nil)).
-Definition fourElements := Cons 1 (Cons 2 (Cons 3 (Cons 4 nil))).
-Definition fiveElements := Cons 1 (Cons 2 (Cons 3 (Cons 4 (Cons 5 nil)))).
-Definition tenElements := fiveElements @ fiveElements.
-Check fun (f : Nat -> Nat) (l : List) => Map f l.

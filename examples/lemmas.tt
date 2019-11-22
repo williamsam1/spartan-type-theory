@@ -51,3 +51,16 @@ Definition irrelev := (λ (A B C : Type) (f : A → B → C) (g : A → C) (b : 
         (Π (a : A) (b1 b2 : B), Eq (f a b1) (f a b2))
         → (Π (a : A), Eq (g a) (f a b))
         → Π (x : A) (y : B), Eq (g x) (f x y).
+
+Definition fmap := (fun (A : Type) (B : A -> Type)
+    (f : Π (x : A), B x) (a : Comp A) => Fmap f a)
+    : Π (A : Type) (B : A -> Type),
+        (Π (x : A), B x) -> Π (a : Comp A), Comp (B (CompEval a)).
+Definition liftA := (fun (A : Type) (B : A -> Type)
+    (f : Comp (Π (x : A), B x)) (a : Comp A) => LiftA f a)
+    : Π (A : Type) (B : A -> Type),
+        Comp (Π (x : A), B x) -> Π (a : Comp A), Comp (B (CompEval a)).
+Definition ret := (fun (A : Type) (a : A) => Ret a)
+	: Π (A : Type), A -> Comp A.
+Definition eval := (fun (A : Type) (a : Comp A) => CompEval a)
+	: Π (A : Type), Comp A -> A.
