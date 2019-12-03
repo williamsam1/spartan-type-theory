@@ -15,6 +15,14 @@ The dependent type theory `spartan` has the following ingridients:
 * Application written as `e₁ e₂`.
 * Type ascription written as `e : T`.
 
+Internal Complexity Analysis ingridents which were added:
+
+* `Nat`, `List` and `Comp` types
+* `Z` and `Suc` constructors for Natural Numbers
+* `Nil` and `Cons` constructors for Lists
+* `Ret`, `Fmap`, `LiftA`, `Eval`, and `Time` for computing the runtime
+* `Eq` and `Refl` for propositional equality
+
 Top-level commands:
 
 * `Definition x := e.` -- define a value
