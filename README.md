@@ -63,8 +63,14 @@ and continue with the infrastructure
 * [`lexer.ml`](src/lexer.ml) and [`parser.mly`](src/parser.mly) -- parsing into concrete syntax
 
 
-## What experiments should I perform to learn more?
+## Examples
 
-There are many things you can try, for example try adding dependent sums, or basic types
-`unit`, `bool` and `nat`.
+* [`app.tt`](examples/app.tt) -- Definitions for applications
+* [`equality.tt`](examples/equality.tt) -- Definitions for propositional equality
+* [`lemmas.tt`](examples/lemmas.tt) -- Lemmas used to prove complexity analysis
+* [`list.tt`](examples/list.tt) -- Definitions for lists
+* [`numerals.tt`](examples/numerals.tt) -- Definitions for natural numbers
+* [`timelist.tt`](examples/timelist.tt) -- Complexity Analysis of functions defined for lists
+* [`timenum.tt`](examples/timenum.tt) -- Complexity Analysis of functions defined for natural number
+
 
