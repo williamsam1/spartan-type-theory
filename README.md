@@ -43,6 +43,10 @@ You can type:
 * `make clean` to clean up.
 * `make doc` to generate HTML documentation (see the generated [`spartan.docdir/index.html`](spartan.docdir/index.html)).
 
+## Run
+
+`./spartan.native filename`
+
 ## Source code
 
 The purpose of the implementation is to keep the source uncomplicated and short. The
@@ -64,6 +68,10 @@ and continue with the infrastructure
 
 
 ## Examples
+
+We created these examples based on the language to show the runtime complexity analysis.
+You can find the complexity analysis for addition and multiplication in `timenum.tt`
+and for append and length in `timelist.tt`.
 
 * [`app.tt`](examples/app.tt) -- Definitions for applications
 * [`equality.tt`](examples/equality.tt) -- Definitions for propositional equality
