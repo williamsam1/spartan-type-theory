@@ -34,6 +34,9 @@ Definition appendTimeExplicit := (fun (m n : List) => 2 + len(m))
 
 
 (**
+m is length of first list
+n is length of second list
+
 f(m, n)   == 2 + m
 
 f(0, n)   == 2
@@ -61,6 +64,7 @@ Definition lengthTimeExplicit := (fun (m : List) => 1 + len (m))
 	: List -> Nat. 
 
 (**
+n is the length of the list
 f(n)   == 1 + n
 
 f(0)   == 1

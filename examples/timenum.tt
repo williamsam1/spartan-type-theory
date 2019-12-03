@@ -10,7 +10,7 @@ Definition S_time_0 := (Refl (S Z))
     : Eq (S_time Z) (S Z).
 (** f (S n) == 1 *)
 Definition S_time_S := (fun (n : Nat) => (Refl (S Z)))
-    : Π (n : Nat), Eq (S_time (S n)) (S Z).§
+    : Π (n : Nat), Eq (S_time (S n)) (S Z).
 (** f n == 1 *)
 Definition S_time_eq := (fun (n : Nat) =>
     nat_ind (fun (n : Nat) => Eq (S_time n) (S Z))
