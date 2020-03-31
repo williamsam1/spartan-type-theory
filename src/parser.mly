@@ -17,6 +17,7 @@
 %token TYPE
 %token PROD
 %token LAMBDA
+%token EQUALS
 
 (* Toplevel commands *)
 
@@ -68,7 +69,8 @@ term : mark_location(plain_term) { $1 }
 plain_term:
   | e=plain_infix_term                          { e }
   | PROD a=prod_abstraction COMMA e=term        { Input.Prod (a, e) }
-  | e1=infix_term ARROW e2=term                 { Input.Arrow (e1, e2) }
+  | e1=infix_term ARROW e2=infix_term           { Input.Arrow (e1, e2) }
+  | e1=infix_term EQUALS e2=infix_term          { Input.Eq (e1, e2) }
   | LAMBDA a=lambda_abstraction DARROW e=term   { Input.Lambda (a, e) }
   | e=infix_term COLON t=term                   { Input.Ascribe (e, t) }
 

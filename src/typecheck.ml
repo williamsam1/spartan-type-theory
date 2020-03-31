@@ -82,6 +82,11 @@ let rec infer ctx {Location.data=e'; loc} =
           TT.instantiate_ty e2 u
      end
 
+  | Syntax.Eq (e1, e2) ->
+     let e1, t1 = infer ctx e1 in
+     let e2 = check ctx e2 t1 in
+     TT.Eq (e1, e2), TT.Ty TT.Type
+
   | Syntax.Ascribe (e, t) ->
      let t = check_ty ctx t in
      let e = check ctx e t in
@@ -108,6 +113,7 @@ and check ctx ({Location.data=e'; loc} as e) ty =
   | Syntax.Prod _
   | Syntax.Var _
   | Syntax.Type
+  | Syntax.Eq _
   | Syntax.Ascribe _ ->
      let e, ty' = infer ctx e in
      if Equal.ty ctx ty ty'

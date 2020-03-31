@@ -8,6 +8,8 @@ type fixity =
 (** An identifier. *)
 type ident = Ident of string * fixity
 
+val get_str : ident -> string
+
 (** Print an identifier. *)
 val print_ident : ?parentheses:bool -> ident -> Format.formatter -> unit
 
